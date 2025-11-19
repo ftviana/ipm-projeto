@@ -6,7 +6,6 @@ import AnomaliesView from '../views/AnomaliesView.vue'
 import ExportView from '../views/ExportView.vue'
 import FAQView from '../views/FAQView.vue'
 import HomeView from '../views/HomeView.vue'
-import SettingsView from '../views/SettingsView.vue'
 
 const routes = [
   {
@@ -42,11 +41,6 @@ const routes = [
         path: 'faq', // Renders at '/faq'
         name: 'faq',
         component: FAQView
-      },
-      {
-        path: 'settings', // Will be /settings
-        name: 'settings',
-        component: SettingsView
       }
     ]
   }

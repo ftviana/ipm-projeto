@@ -30,3 +30,16 @@ body {
   --accent-red: #FF5A5F;
   --border-radius: 16px;
 }
+
+/* --- SCROLLBAR INVISÍVEL (Estilo Mac no Windows) --- */
+
+/* 1. Para Chrome, Safari e Opera */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* 2. Para Firefox, IE e Edge */
+html, body, div, main {
+  -ms-overflow-style: none;  /* IE e Edge */
+  scrollbar-width: none;  /* Firefox */
+}

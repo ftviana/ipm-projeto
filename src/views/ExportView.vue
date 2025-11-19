@@ -186,7 +186,7 @@ function generateReport() {
 .export-page {
   width: 100%;
   padding: 2rem 1rem;
-  max-width: 820px;
+  max-width: 810px;
   color: black;
 }
 

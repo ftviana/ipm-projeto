@@ -40,10 +40,11 @@ function toggleFaq(id) {
 </template>
 
 <style scoped>
+
 .faq-page {
   width: 100%;
   padding: 2rem 1rem;
-  max-width: 820px;
+  max-width: 810px;
   color: black;
 }
 
@@ -78,7 +79,7 @@ function toggleFaq(id) {
   justify-content: space-between;
   align-items: center;
   /* Padding generoso para parecer com a imagem */
-  padding: 1rem 1rem; 
+  padding: 0.75rem 1rem; 
   font-weight: 600;
   color: black;
   cursor: pointer;
@@ -128,7 +129,7 @@ function toggleFaq(id) {
 
 /* Quando aberto, damos padding e opacidade */
 .faq-item.open .faq-answer-content {
-  padding: 1rem 1rem; /* Padding igual ao título para alinhar */
+  padding: 0.5rem 1rem; /* Padding igual ao título para alinhar */
   opacity: 1;
 }
 </style>
