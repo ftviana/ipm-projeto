@@ -14,10 +14,10 @@
 .toast-notification {
   position: absolute;
   background-color: #E0F2E9;
-  color: #065F46;
+  color: darkgreen;
   padding: 1rem 1.5rem;
   border-radius: 9999px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px black;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -25,8 +25,8 @@
 }
 
 .icon-circle {
-  background-color: #34D399;
-  color: #ffffff;
+  background-color: green;
+  color: white;
   border-radius: 50%;
   width: 28px;
   height: 28px;

@@ -183,34 +183,32 @@ function generateReport() {
 </template>
 
 <style scoped>
-
 .export-page {
   width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
-  padding-top: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  padding: 2rem 1rem;
+  max-width: 820px;
+  color: black;
 }
 
 .header {
   width: 100%;
 }
+
 .header h1 {
   font-weight: 800;
   font-size: 2rem;
-  margin: 0 0 1rem 0;
-  color: #111827;
+  margin: 0 0 0.5rem 0;
+  color: black;
 }
+
 .header .subtitle {
   font-size: 1rem;
-  color: #6b7280;
+  color: dimgrey;
   margin-top: -1rem;
 }
 
 .filter-box {
-  background-color: #ffffff;
+  background-color: white;
   border-radius: 16px;
   padding: 1.5rem;
   box-shadow: 0 4px 20px -5px rgba(150, 150, 150, 0.08);
@@ -237,7 +235,7 @@ function generateReport() {
 .filter-group label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #374151;
+  color: black;
 }
 
 .select-box {
@@ -245,11 +243,11 @@ function generateReport() {
   justify-content: space-between;
   align-items: center;
   padding: 0rem 1rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid lightgrey;
   border-radius: 8px;
-  background-color: #fff;
+  background-color: white;
   font-size: 0.9rem;
-  color: #1f2937;
+  color: black;
   cursor: pointer;
   user-select: none;
   min-height: 42px;
@@ -260,7 +258,7 @@ function generateReport() {
 }
 
 .select-box svg {
-  color: #6b7280;
+  color: dimgrey;
 }
 
 .sliders {
@@ -274,7 +272,7 @@ function generateReport() {
 .slider-group label {
   font-size: 1rem;
   font-weight: normal;
-  color: #6b7280;
+  color: dimgrey;
 }
 
 .slider-wrapper {
@@ -284,7 +282,7 @@ function generateReport() {
 
 .slider-wrapper span { 
   font-size: 0.8rem; 
-  color: #6b7280; 
+  color: dimgrey; 
   white-space: nowrap;
 }
 
@@ -309,7 +307,7 @@ function generateReport() {
   text-align: right;
   font-size: 1.1rem;
   font-weight: normal;
-  color: #111827;
+  color: black;
   margin-top: 0;
   background-color: transparent;
 }
@@ -337,26 +335,27 @@ function generateReport() {
 
 .slider-limits span {
   font-size: 0.85rem;
-  color: #9ca3af;
+  color: dimgrey;
 }
 
 .slider-group input[type="range"]::-webkit-slider-runnable-track {
   width: 100%;
   height: 4px;
-  background-color: #e5e7eb;
+  background-color: lightgrey;
   border-radius: 4px;
 }
 
 .slider-group input[type="range"]::-moz-range-track {
   width: 100%;
   height: 4px;
-  background-color: #e5e7eb;
+  background-color: lightgrey;
   border-radius: 4px;
 }
 .slider-group input[type="range"]::-moz-focus-outer {
   border: 0;
 }
 
+/* COR ALTERADA */
 .slider-group input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -372,6 +371,7 @@ function generateReport() {
   transform: scale(1.15);
 }
 
+/* COR ALTERADA */
 .slider-group input[type="range"]::-moz-range-thumb {
   background-color: #FF5A5F;
   height: 16px;
@@ -391,15 +391,16 @@ function generateReport() {
 
 .date-range button {
   padding: 0.6rem 1rem;
-  border: 1px solid #d1d5db;
-  background-color: #fff;
-  color: #6b7280;
+  border: 1px solid lightgrey;
+  background-color: white;
+  color: dimgrey;
   border-radius: 9999px;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
+/* COR ALTERADA */
 .date-range button.active {
   background-color: rgba(255, 90, 95, 0.1);
   color: #FF5A5F;
@@ -408,13 +409,13 @@ function generateReport() {
 
 .date-range button:not(.active):hover {
   background-color: #f9fafb;
-  color: #374151;
-  border-color: #374151;
+  color: black;
+  border-color: black;
 }
 
 .format-box {
   align-items: flex-start;
-  background-color: #ffffff;
+  background-color: white;
   border-radius: 16px;
   padding: 1.5rem 2rem;
   display: flex;
@@ -427,7 +428,7 @@ function generateReport() {
 .format-box h3 {
   font-size: 1rem;
   font-weight: 600;
-  color: #374151;
+  color: black;
   margin: 0;
   width: 100%;
   text-align: left;
@@ -446,6 +447,7 @@ function generateReport() {
   top: 0;
   left: 0;
   height: 100%; 
+  /* COR ALTERADA */
   background-color: rgba(255, 90, 95, 0.1);
   border: 1px solid #FF5A5F;
   border-radius: 9999px;
@@ -455,9 +457,9 @@ function generateReport() {
 }
 
 .format-nav button {
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  color: #6b7280;
+  background-color: white;
+  border: 1px solid lightgrey;
+  color: dimgrey;
   padding: 0.6rem 1.5rem;
   font-size: 0.9rem;
   font-weight: 600;
@@ -469,6 +471,7 @@ function generateReport() {
   z-index: 2;
 }
 
+/* COR ALTERADA */
 .format-nav button.active {
   background-color: rgba(255, 90, 95, 0.1);
   color: #FF5A5F;
@@ -477,8 +480,8 @@ function generateReport() {
 
 .format-nav button:not(.active):hover {
   background-color: #f9fafb;
-  color: #374151;
-  border-color: #374151;
+  color: black;
+  border-color: black;
 }
 
 .generate-section {
@@ -488,9 +491,10 @@ function generateReport() {
   gap: 0.75rem;
   margin-top: 0rem;
 }
+/* COR ALTERADA */
 .btn-generate {
   background-color: #FF5A5F;
-  color: #ffffff;
+  color: white;
   border: none;
   padding: 0.9rem 2rem;
   font-size: 1rem;
@@ -502,12 +506,12 @@ function generateReport() {
 }
 
 .btn-generate:hover {
-  background-color: #e05a5a;
+  background-color: #e0484d;
 }
 
 .footer-note {
   font-size: 0.8rem;
-  color: #9ca3af;
+  color: dimgrey;
   text-align: center;
 }
 </style>

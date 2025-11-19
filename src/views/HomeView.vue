@@ -112,7 +112,7 @@ const displayedPrice = computed(() => {
 
 <style scoped>
 .home-content {
-  max-width: 700px;
+  max-width: 785px;
   margin-left: auto;
   margin-right: auto;
   padding: 4rem 0;
@@ -126,7 +126,7 @@ const displayedPrice = computed(() => {
 
 .box {
   flex: 1;
-  background-color: #ffffff;
+  background-color: white;
   padding: 1rem; 
   border-radius: 16px;
   box-shadow: 0 4px 20px -5px rgba(150, 150, 150, 0.08); 
@@ -135,7 +135,7 @@ const displayedPrice = computed(() => {
 .box h3 {
   font-size: 0.8rem; 
   font-weight: 500;
-  color: #9ca3af;
+  color: dimgrey;
   margin: 0 0 0.25rem 0;
 }
 
@@ -148,7 +148,7 @@ const displayedPrice = computed(() => {
 .box .value {
   font-size: 1.5rem; 
   font-weight: 700;
-  color: #111827;
+  color: black;
   margin: 0;
   line-height: 1;
 }
@@ -163,7 +163,7 @@ const displayedPrice = computed(() => {
   margin-right: 0.15rem; 
 }
 .box .change.positive { color: #10B981; }
-.box .change.negative { color: #EF4444; }
+.box .change.negative { color: #FF5A5F; }
 
 .cta-grid {
   display: grid;
@@ -175,12 +175,13 @@ const displayedPrice = computed(() => {
 .cta-box {
   padding: 1.25rem; 
   border-radius: 32px;
-  color: #ffffff;
+  color: white;
   display: flex;
   flex-direction: column;
   gap: 1rem; 
 }
 
+/* COR ALTERADA */
 .cta-red    { background-color: #FF5A5F; }
 .cta-blue   { background-color: #32A9E1; }
 .cta-yellow { background-color: #F5C544; }
@@ -201,7 +202,6 @@ const displayedPrice = computed(() => {
 }
 
 .cta-box a {
-  border: none;
   border-radius: 16px; 
   padding: 0.5rem 0.75rem; 
   display: flex;
@@ -214,7 +214,7 @@ const displayedPrice = computed(() => {
   transition: transform 0.2s ease;
   font-size: 0.8rem; 
   text-decoration: none;
-  background-color: #ffffff;
+  background-color: white;
 }
 .cta-box a:hover {
   transform: scale(1.05);
@@ -229,6 +229,7 @@ const displayedPrice = computed(() => {
   transform: scaleX(-1);
 }
 
+/* COR ALTERADA */
 .cta-red a {
   color: #FF5A5F;
 }
@@ -245,7 +246,7 @@ const displayedPrice = computed(() => {
 .separator {
   display: flex;
   align-items: center;
-  color: #6b7280;
+  color: dimgrey;
   font-weight: 500;
   font-size: 0.9rem;
   margin: 2.5rem auto 1.5rem;
@@ -277,21 +278,22 @@ const displayedPrice = computed(() => {
   left: 1.25rem;
   top: 50%;
   transform: translateY(-50%);
-  color: #9ca3af;
+  color: dimgrey;
   width: 16px; 
   height: 16px;
 }
 
+/* ALTERAÇÃO AQUI: width para 100% */
 .search-bar input {
-  width: 90%;
+  width: 100%;
   padding: 0.9rem 1.5rem 0.9rem 3rem; 
   border: none;
   border-radius: 9999px;
-  background-color: #ffffff;
+  background-color: white;
   font-size: 0.9rem;
-  color: #333;
+  color: black;
 }
 .search-bar input::placeholder {
-  color: #9ca3af;
+  color: dimgrey;
 }
 </style>

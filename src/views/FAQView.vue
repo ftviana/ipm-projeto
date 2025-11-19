@@ -28,6 +28,7 @@ function toggleFaq(id) {
           <span>{{ faq.question }}</span>
           <svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="m6 9l6 6l6-6"/></svg>
         </div>
+        
         <div class="faq-answer">
           <div class="faq-answer-content">
             {{ faq.answer }}
@@ -39,82 +40,95 @@ function toggleFaq(id) {
 </template>
 
 <style scoped>
-
 .faq-page {
   width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
   padding: 2rem 1rem;
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 70px);
+  max-width: 820px;
+  color: black;
 }
 
 .faq-page h1 {
   font-weight: 800;
   font-size: 2rem;
   margin: 0 0 1.5rem 0;
-  color: #111827;
+  color: black;
 }
 
 .faq-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  overflow-y: auto;
-  flex-grow: 1;
+  gap: 1rem; /* Espaço entre as perguntas */
 }
 
 .faq-item {
-  background-color: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  overflow: hidden;
+  background-color: white;
+  border-radius: 24px; /* Arredondamento forte tipo "pill" */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  overflow: hidden; /* Importante para manter a forma redonda */
+  transition: all 0.3s ease;
+}
+
+/* Hover ligeiro opcional */
+.faq-item:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
 .faq-question {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.25rem;
+  /* Padding generoso para parecer com a imagem */
+  padding: 1rem 1rem; 
   font-weight: 600;
-  color: #374151;
+  color: black;
   cursor: pointer;
   user-select: none;
+  background: white;
+  position: relative;
+  z-index: 2;
 }
 
 .chevron-icon {
-  color: #9ca3af;
+  color: #FF5A5F; /* Vermelho fixo como na imagem */
   transition: transform 0.3s ease;
+  min-width: 20px; /* Evita esmagar o ícone */
 }
 
 .faq-item.open .chevron-icon {
   transform: rotate(180deg);
-  color: #FF5A5F;
 }
 
+/* --- ANIMAÇÃO DE ABERTURA --- */
 .faq-answer {
   display: grid;
-  grid-template-rows: 0fr; 
-  border-top: 1px solid transparent;
-  
-  transition: grid-template-rows 0.4s ease, 
-              border-color 0.4s ease;
-  
-  overflow: hidden;
+  grid-template-rows: 0fr; /* Estado fechado: altura 0 */
+  transition: grid-template-rows 0.3s ease-out, border-top 0.3s ease;
+  /* Sem borda aqui para garantir que desaparece totalmente quando fechado */
 }
 
 .faq-item.open .faq-answer {
-  grid-template-rows: 1fr;
-  border-top: 1px solid #f3f4f6;
+  grid-template-rows: 1fr; /* Estado aberto: altura automática */
+  /* A linha separadora só aparece quando está aberto */
+  border-top: 1px solid lightgrey; 
 }
 
 .faq-answer-content {
-  padding: 0rem 1rem 0rem 1rem;
-  color: #6b7280;
-  line-height: 1.6;
-  font-size: 0.9rem;
-
+  min-height: 0;
   overflow: hidden;
+  color: dimgrey;
+  line-height: 1.6;
+  font-size: 0.95rem;
+  
+  /* O padding está AQUI dentro. Quando o grid fecha (0fr), este padding é escondido. */
+  /* 0 no topo para não duplicar espaço com a margem, padding nas laterais e fundo */
+  padding: 0; 
+  opacity: 0;
+  transition: opacity 0.3s ease, padding 0.3s ease;
+}
+
+/* Quando aberto, damos padding e opacidade */
+.faq-item.open .faq-answer-content {
+  padding: 1rem 1rem; /* Padding igual ao título para alinhar */
+  opacity: 1;
 }
 </style>

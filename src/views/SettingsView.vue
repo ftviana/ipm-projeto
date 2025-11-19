@@ -8,11 +8,8 @@ const localCurrency = ref(store.state.currency)
 const showToast = ref(false)
 
 function saveChanges() {
-
   store.saveCurrency(localCurrency.value)
-  
   showToast.value = true
-  
   setTimeout(() => {
     showToast.value = false
   }, 3000)
@@ -25,17 +22,13 @@ function resetToDefaults() {
 </script>
 
 <template>
-
   <div class="settings-page">
-    
     <div class="header">
       <h1>Settings</h1>
-      <p class="subtitle">Personalize your experience</p>
     </div>
 
     <section class="settings-section">
       <h2>Preferred Currency</h2>
-      <p class="description">Define how you want to see the data presented.</p>
       
       <div class="currency-switcher">
         <button 
@@ -70,29 +63,28 @@ function resetToDefaults() {
     <p class="footer-note">
       Your preferences are locally saved on this device.
     </p>
-
   </div>
 </template>
 
 <style scoped>
-
 .settings-page {
   width: 100%;
-  max-width: 700px;
+  max-width: 820px;
   margin: 0 auto;
-  padding: 4rem 0;
+  padding: 2rem 1rem;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2.5rem;
+  gap: 5.5rem;
+  color: black;
 }
 
 .header h1 {
-  font-weight: 800; font-size: 2.5rem; margin: 0; color: #111827;
+  font-weight: 800; font-size: 2rem; margin: 0; color: black;
 }
 
 .header .subtitle {
-  font-size: 1rem; color: #6b7280; margin: 0.25rem 0 0 0;
+  font-size: 1rem; color: dimgrey; margin: 0.25rem 0 0 0;
 }
 
 .settings-section {
@@ -100,11 +92,11 @@ function resetToDefaults() {
 }
 
 .settings-section h2 {
-  font-weight: 700; font-size: 1.2rem; color: #111827; margin: 0;
+  font-weight: 700; font-size: 1.2rem; color: black; margin: 0;
 }
 
 .settings-section .description {
-  font-size: 0.9rem; color: #6b7280; margin: 0 0 0.5rem 0;
+  font-size: 0.9rem; color: dimgrey; margin: 0 0 0.5rem 0;
 }
 
 .currency-switcher {
@@ -112,13 +104,14 @@ function resetToDefaults() {
 }
 
 .currency-switcher button {
-  flex: 1; border: 1px solid #e5e7eb; background-color: #ffffff; color: #111827;
+  flex: 1; border: 1px solid lightgrey; background-color: white; color: black;
   padding: 1rem; font-size: 1rem; font-weight: 600; border-radius: 16px; cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* COR ALTERADA */
 .currency-switcher button.active {
-  background-color: #ED6A6A; color: #ffffff; border-color: #ED6A6A;
+  background-color: #FF5A5F; color: white; border-color: #FF5A5F;
 }
 
 .actions-row {
@@ -130,7 +123,6 @@ function resetToDefaults() {
   display: flex;
   justify-content: center;
   position: relative;
-  height: 0;
 }
 
 .fade-enter-from,
@@ -148,17 +140,19 @@ function resetToDefaults() {
   cursor: pointer; border: 1px solid transparent; transition: all 0.2s ease;
 }
 
+/* COR ALTERADA */
 .btn-save {
-  background-color: #ED6A6A; color: #ffffff; border-color: #ED6A6A;
+  background-color: #FF5A5F; color: white; border-color: #FF5A5F;
 }
 
-.btn-save:hover { background-color: #e05a5a; }
+.btn-save:hover { background-color: #e0484d; }
+/* COR ALTERADA */
 .btn-reset {
-  background-color: #ffffff; color: #ED6A6A; border-color: #ED6A6A;
+  background-color: white; color: #FF5A5F; border-color: #FF5A5F;
 }
 
 .btn-reset:hover { background-color: #fefafa; }
 .footer-note {
-  width: 100%; text-align: center; font-size: 0.8rem; color: #9ca3af; margin-top: 2rem;
+  width: 100%; text-align: center; font-size: 0.8rem; color: dimgrey; margin-top: 2rem;
 }
 </style>
