@@ -1,17 +1,17 @@
-import { reactive, readonly } from 'vue'
+import { reactive, readonly } from "vue";
 
-const initialCurrency = sessionStorage.getItem('currency') || 'USD'
+const initialCurrency = sessionStorage.getItem("currency") || "EUR";
 
 const state = reactive({
-  currency: initialCurrency
-})
+  currency: initialCurrency,
+});
 
 function saveCurrency(newCurrency) {
-  state.currency = newCurrency
-  sessionStorage.setItem('currency', newCurrency)
+  state.currency = newCurrency;
+  sessionStorage.setItem("currency", newCurrency);
 }
 
 export const store = {
   state: readonly(state),
   saveCurrency,
-}
+};

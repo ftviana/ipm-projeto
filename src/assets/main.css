@@ -1,4 +1,3 @@
-/* src/assets/main.css */
 *,
 *::before,
 *::after {
@@ -11,8 +10,9 @@ body {
   background-color: linen;
   color: var(--text-primary);
   line-height: 1.6;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
-    Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
   font-size: 15px;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -27,19 +27,18 @@ body {
   --card-bg: white;
   --text-primary: black;
   --text-secondary: grey;
-  --accent-red: #FF5A5F;
+  --accent-red: #ff5a5f;
   --border-radius: 16px;
 }
 
-/* --- SCROLLBAR INVISÍVEL (Estilo Mac no Windows) --- */
-
-/* 1. Para Chrome, Safari e Opera */
 ::-webkit-scrollbar {
   display: none;
 }
 
-/* 2. Para Firefox, IE e Edge */
-html, body, div, main {
-  -ms-overflow-style: none;  /* IE e Edge */
-  scrollbar-width: none;  /* Firefox */
+html,
+body,
+div,
+main {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

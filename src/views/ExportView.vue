@@ -1,517 +1,655 @@
+<template>
+  <div class="export-page">
+    <div class="header-section">
+      <h1>Export Data</h1>
+      <p class="subtitle">
+        Generate and download a report based on your selected filters.
+      </p>
+    </div>
+
+    <section class="filter-card">
+      <div class="filter-row dropdowns-row">
+        <div class="filter-group">
+          <label>City</label>
+          <div class="select-wrapper">
+            <select v-model="selectedCity" @change="onCityChange">
+              <option value="porto">Porto</option>
+              <option value="lisbon">Lisbon</option>
+              <option value="barcelona">Barcelona</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label>Neighbourhood</label>
+          <div class="select-wrapper">
+            <select
+              v-model="filters.neighbourhood"
+              :disabled="!neighbourhoods.length"
+            >
+              <option value="">All Neighbourhoods</option>
+              <option v-for="n in neighbourhoods" :key="n" :value="n">
+                {{ n }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label>Property Type</label>
+          <div class="select-wrapper">
+            <select
+              v-model="filters.propertyType"
+              :disabled="!propertyTypes.length"
+            >
+              <option value="">All Types</option>
+              <option v-for="t in propertyTypes" :key="t" :value="t">
+                {{ t }}
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-row full-width-row">
+        <div class="slider-group price-slider">
+          <div class="slider-header">
+            <label>Price Range</label>
+          </div>
+          <div class="range-container">
+            <input
+              type="range"
+              min="0"
+              max="510"
+              step="10"
+              v-model.number="filters.priceMin"
+              class="thumb thumb-left"
+              :style="{ zIndex: filters.priceMin > 250 ? '5' : '3' }"
+            />
+            <input
+              type="range"
+              min="0"
+              max="510"
+              step="10"
+              v-model.number="filters.priceMax"
+              class="thumb thumb-right"
+            />
+            <div class="slider-track"></div>
+          </div>
+          <div class="slider-labels">
+            <span>{{ currencySymbol }}{{ filters.priceMin }}</span>
+            <span
+              >{{ currencySymbol
+              }}{{ filters.priceMax >= 510 ? "500+" : filters.priceMax }}</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-row secondary-sliders-row">
+        <div class="slider-group">
+          <div class="slider-header">
+            <label>Rating</label>
+            <span class="slider-value">{{ filters.minRating }}</span>
+          </div>
+          <div class="range-container single">
+            <input
+              type="range"
+              min="1"
+              max="5"
+              step="0.5"
+              v-model.number="filters.minRating"
+              class="simple-slider"
+            />
+            <div class="slider-track"></div>
+          </div>
+          <div class="slider-labels">
+            <span>1</span>
+            <span>5</span>
+          </div>
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <label>Occupancy</label>
+            <span class="slider-value">{{
+              filters.minGuests >= 10 ? "10+" : filters.minGuests
+            }}</span>
+          </div>
+          <div class="range-container single">
+            <input
+              type="range"
+              min="1"
+              max="10"
+              step="1"
+              v-model.number="filters.minGuests"
+              class="simple-slider"
+            />
+            <div class="slider-track"></div>
+          </div>
+          <div class="slider-labels">
+            <span>1</span>
+            <span>10+</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="action-card">
+      <div class="action-header">
+        <h3>Ready to Export?</h3>
+        <p>
+          This will generate a PDF with the
+          {{ filteredListings.length }} listings matching your criteria.
+        </p>
+      </div>
+      <button
+        class="btn-export"
+        @click="exportPDF"
+        :disabled="isLoading || filteredListings.length === 0"
+      >
+        <span v-if="!isLoading">Download PDF Report</span>
+        <span v-else>Generating...</span>
+      </button>
+    </section>
+
+    <section class="preview-card">
+      <h3>Preview Data</h3>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Neighbourhood</th>
+              <th>Type</th>
+              <th>Price</th>
+              <th>Guests</th>
+              <th>Rating</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in previewList" :key="item.id">
+              <td class="col-name">{{ item.name }}</td>
+              <td>{{ item.neighbourhood_cleansed }}</td>
+              <td>{{ item.room_type }}</td>
+              <td>{{ currencySymbol }}{{ item.price }}</td>
+              <td>{{ item.accommodates }}</td>
+              <td>{{ item.review_scores_rating || "N/A" }}</td>
+            </tr>
+            <tr v-if="filteredListings.length === 0">
+              <td colspan="6" class="empty-row">
+                No data matches your filters.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination-info" v-if="filteredListings.length > 0">
+        Showing top 10 of {{ filteredListings.length }} results
+      </div>
+    </section>
+  </div>
+</template>
+
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue'
-import { store } from '../store.js'
+import { ref, reactive, computed, onMounted, watch } from "vue";
+import { store } from "../store.js";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
-const selectedCity = ref('')
-const selectedNeighborhood = ref('')
-const selectedPropertyType = ref('')
-const priceRange = ref(50)
-const rating = ref(0)
-const occupancy = ref(1)
-const selectedDateRange = ref('')
+// --- STATE ---
+const selectedCity = ref("porto");
+const rawListings = ref([]);
+const isLoading = ref(false);
 
-const selectedFormat = ref('PDF')
-const formatNav = ref(null)
-const formatGlider = ref(null)
+const filters = reactive({
+  neighbourhood: "",
+  propertyType: "",
+  priceMin: 0,
+  priceMax: 510, // MUDANÇA: Default max é 510 (que representa 500+)
+  minRating: 1,
+  minGuests: 1,
+});
 
-const conversionRates = {
-  USD: { symbol: '$', max: 500 },
-  EUR: { symbol: '€', max: 470 },
-  GBP: { symbol: '£', max: 410 }
-}
-const currentCurrencyInfo = computed(() => {
-  return conversionRates[store.state.currency] || conversionRates.USD
-})
+// --- COMPUTED ---
+const currencySymbol = computed(() => {
+  const map = { USD: "$", EUR: "€", GBP: "£" };
+  return map[store.state.currency] || "€";
+});
 
-const updateFormatGlider = () => {
-  if (!formatNav.value || !formatGlider.value) return;
-  const activeButton = formatNav.value.querySelector('button.active');
-  if (activeButton) {
-    formatGlider.value.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-    formatGlider.value.style.opacity = '1';
-    const offsetLeft = activeButton.offsetLeft;
-    const offsetWidth = activeButton.offsetWidth;
-    const offsetHeight = activeButton.offsetHeight;
+const neighbourhoods = computed(() => {
+  const set = new Set(rawListings.value.map((i) => i.neighbourhood_cleansed));
+  return Array.from(set).sort();
+});
 
-    formatGlider.value.style.width = `${offsetWidth}px`;
-    formatGlider.value.style.height = `${offsetHeight}px`;
-    formatGlider.value.style.top = `0px`;
-    formatGlider.value.style.transform = `translateX(${offsetLeft}px)`;
-  } else {
-    formatGlider.value.style.opacity = '0';
-    formatGlider.value.style.width = '0px';
+const propertyTypes = computed(() => {
+  const set = new Set(rawListings.value.map((i) => i.room_type));
+  return Array.from(set).sort();
+});
+
+const filteredListings = computed(() => {
+  return rawListings.value.filter((item) => {
+    // Price Logic Atualizada
+    const price = parseFloat(String(item.price).replace(/[$,]/g, "")) || 0;
+
+    if (price <= 0) return false; // Ignorar preços zero
+    if (price < filters.priceMin) return false;
+
+    // Lógica 500+: Se priceMax < 510, aplicamos o limite.
+    // Se for 510, ignoramos o limite superior (mostra tudo > priceMin)
+    if (filters.priceMax < 510 && price > filters.priceMax) return false;
+
+    // Neighbourhood
+    if (
+      filters.neighbourhood &&
+      item.neighbourhood_cleansed !== filters.neighbourhood
+    )
+      return false;
+
+    // Property Type
+    if (filters.propertyType && item.room_type !== filters.propertyType)
+      return false;
+
+    // Rating
+    const rating = parseFloat(item.review_scores_rating || 0);
+    const normRating = rating > 5 ? rating / 20 : rating;
+    if (normRating < filters.minRating) return false;
+
+    // Capacity
+    const capacity = parseInt(item.accommodates) || 1;
+    if (filters.minGuests >= 10) {
+      if (capacity < 10) return false;
+    } else {
+      if (capacity < filters.minGuests) return false;
+    }
+
+    return true;
+  });
+});
+
+const previewList = computed(() => filteredListings.value.slice(0, 10));
+
+// --- ACTIONS ---
+const loadData = async () => {
+  isLoading.value = true;
+  let cityKey = selectedCity.value.toLowerCase();
+  if (cityKey === "lisboa") cityKey = "lisbon";
+
+  try {
+    const response = await fetch(`http://localhost:3000/${cityKey}_listings`);
+    if (!response.ok) throw new Error("Failed to fetch");
+    rawListings.value = await response.json();
+
+    filters.neighbourhood = "";
+    filters.propertyType = "";
+  } catch (err) {
+    console.error(err);
+  } finally {
+    isLoading.value = false;
   }
 };
 
-watch(selectedFormat, () => {
-  setTimeout(updateFormatGlider, 0);
-}, { flush: 'post' });
+const onCityChange = () => {
+  loadData();
+};
 
+// --- PDF EXPORT ---
+const exportPDF = () => {
+  const doc = new jsPDF();
+  doc.setFontSize(18);
+  doc.text(`InsideView Report - ${selectedCity.value.toUpperCase()}`, 14, 22);
+
+  const activeFilters = [];
+  if (filters.neighbourhood)
+    activeFilters.push(`Hood: ${filters.neighbourhood}`);
+  if (filters.propertyType) activeFilters.push(`Type: ${filters.propertyType}`);
+
+  // Display 500+ correct text
+  const maxPrice = filters.priceMax >= 510 ? "500+" : filters.priceMax;
+  activeFilters.push(
+    `Price: ${currencySymbol.value}${filters.priceMin}-${maxPrice}`
+  );
+
+  activeFilters.push(`Rating: ${filters.minRating}+`);
+  activeFilters.push(`Guests: ${filters.minGuests}+`);
+
+  const filterString = `Generated: ${new Date().toLocaleDateString()} | ${activeFilters.join(
+    ", "
+  )}`;
+
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  const splitTitle = doc.splitTextToSize(filterString, 180);
+  doc.text(splitTitle, 14, 30);
+
+  const startY = 32 + splitTitle.length * 5;
+
+  const tableBody = filteredListings.value.slice(0, 1000).map((item) => {
+    const price = parseFloat(String(item.price).replace(/[$,]/g, "")) || 0;
+    return [
+      item.name,
+      item.neighbourhood_cleansed,
+      item.room_type,
+      price > 0 ? `${currencySymbol.value}${price}` : "N/A",
+      item.accommodates,
+      item.review_scores_rating || "-",
+    ];
+  });
+
+  autoTable(doc, {
+    head: [["Name", "Neighbourhood", "Type", "Price", "Guests", "Rating"]],
+    body: tableBody,
+    startY: startY,
+    theme: "grid",
+    styles: {
+      fontSize: 8,
+      cellPadding: 3,
+      overflow: "linebreak",
+      valign: "middle",
+    },
+    headStyles: { fillColor: [255, 90, 95] },
+    columnStyles: {
+      0: { cellWidth: 60 },
+      1: { cellWidth: 35 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 25 },
+      4: { cellWidth: 15 },
+      5: { cellWidth: 15 },
+    },
+  });
+
+  doc.save(`report_${selectedCity.value}_${Date.now()}.pdf`);
+};
+
+// --- INIT ---
 onMounted(() => {
-  updateFormatGlider();
+  loadData();
 });
 
-function generateReport() {
-  console.log('--- Report Generation ---');
-  console.log('Filters:', {
-    city: selectedCity.value,
-    neighborhood: selectedNeighborhood.value,
-    propertyType: selectedPropertyType.value,
-    priceMax: priceRange.value,
-    ratingMin: rating.value,
-    occupancyMin: occupancy.value,
-    dateRange: selectedDateRange.value,
-    currency: store.state.currency,
-  });
-  console.log('Format:', selectedFormat.value);
-  
-  alert(`Generating ${selectedFormat.value} report... (Check console for options)`);
-}
+// --- WATCHERS DE BLOQUEIO (GAP) ---
+watch(
+  () => filters.priceMin,
+  (val) => {
+    // Se o mínimo tentar passar o máximo (menos o gap de 10), empurra-o para trás
+    if (val >= filters.priceMax - 10) {
+      filters.priceMin = filters.priceMax - 10;
+    }
+  }
+);
+
+watch(
+  () => filters.priceMax,
+  (val) => {
+    // Se o máximo tentar baixar do mínimo (mais o gap de 10), empurra-o para a frente
+    if (val <= filters.priceMin + 10) {
+      filters.priceMax = filters.priceMin + 10;
+    }
+  }
+);
 </script>
-
-<template>
-  <div class="export-page">
-    <div class="header">
-      <h1>Export Data</h1>
-    </div>
-
-    <section class="filter-box">
-      <div class="filter-row">
-        <div class="filter-group">
-          <label for="city">City</label>
-          <div class="select-box" @click="">
-            <span>{{ selectedCity || 'Select City' }}</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9l6 6l6-6"/></svg>
-          </div>
-          </div>
-        <div class="filter-group">
-          <label for="neighborhood">Neighborhood</label>
-          <div class="select-box" @click="">
-            <span>{{ selectedNeighborhood || 'Select Neighborhood' }}</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9l6 6l6-6"/></svg>
-          </div>
-          </div>
-        <div class="filter-group">
-          <label for="propertyType">Property Type</label>
-          <div class="select-box" @click="">
-            <span>{{ selectedPropertyType || 'Select Type' }}</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9l6 6l6-6"/></svg>
-          </div>
-          </div>
-      </div>
-
-      <div class="filter-row sliders">
-        
-        <div class="filter-group slider-group">
-           <div class="slider-header">
-             <label for="priceRange">Price Range</label>
-             <input type="number" class="slider-input" v-model.number="priceRange" min="50" :max="currentCurrencyInfo.max" step="10">
-           </div>
-           <div class="slider-wrapper">
-             <input type="range" id="priceRange" v-model.number="priceRange" min="50" :max="currentCurrencyInfo.max" step="10">
-           </div>
-           <div class="slider-limits">
-             <span>{{ currentCurrencyInfo.symbol }}50</span>
-             <span>{{ currentCurrencyInfo.symbol }}{{ currentCurrencyInfo.max }}</span>
-           </div>
-         </div>
-
-         <div class="filter-group slider-group">
-           <div class="slider-header">
-             <label for="rating">Rating</label>
-             <input type="text" class="slider-input" v-model.number="rating" min="0" max="5" step="0.1">
-           </div>
-           <div class="slider-wrapper">
-             <input type="range" id="rating" v-model.number="rating" min="0" max="5" step="0.1">
-           </div>
-           <div class="slider-limits">
-             <span>0</span>
-             <span>5</span>
-           </div>
-         </div>
-
-         <div class="filter-group slider-group">
-           <div class="slider-header">
-             <label for="occupancy">Occupancy</label>
-             <input type="number" class="slider-input" v-model.number="occupancy" min="1" max="10" step="1">
-           </div>
-           <div class="slider-wrapper">
-             <input type="range" id="occupancy" v-model.number="occupancy" min="1" max="10" step="1">
-           </div>
-           <div class="slider-limits">
-             <span>1</span>
-             <span>10</span>
-           </div>
-         </div>
-
-      </div>
-
-      <div class="filter-row date-range">
-        <button
-          :class="{ active: selectedDateRange === 'Last 7 days' }"
-          @click="selectedDateRange = 'Last 7 days'">
-          Last 7 days
-        </button>
-        <button
-          :class="{ active: selectedDateRange === 'Last month' }"
-          @click="selectedDateRange = 'Last month'">
-          Last month
-        </button>
-        <button
-          :class="{ active: selectedDateRange === 'Custom' }"
-          @click="selectedDateRange = 'Custom'">
-          Custom
-        </button>
-      </div>
-    </section>
-
-    <section class="format-box">
-      <h3>Choose Format</h3>
-      <div class="format-nav" ref="formatNav">
-        <button :class="{ active: selectedFormat === 'PDF' }" @click="selectedFormat = 'PDF'">PDF</button>
-        <button :class="{ active: selectedFormat === 'CSV' }" @click="selectedFormat = 'CSV'">CSV</button>
-        <button :class="{ active: selectedFormat === 'JSON' }" @click="selectedFormat = 'JSON'">JSON</button>
-      </div>
-    </section>
-
-    <div class="generate-section">
-      <button class="btn-generate" @click="generateReport">Generate Report</button>
-      <p class="footer-note">Your report will be generated using the filters you've applied.</p>
-    </div>
-
-  </div>
-</template>
 
 <style scoped>
 .export-page {
   width: 100%;
   padding: 2rem 1rem;
-  max-width: 810px;
+  max-width: 900px;
+  margin: 0 auto;
   color: black;
 }
 
-.header {
-  width: 100%;
+.header-section {
+  margin-bottom: 2rem;
 }
 
-.header h1 {
+.header-section h1 {
   font-weight: 800;
   font-size: 2rem;
   margin: 0 0 0.5rem 0;
-  color: black;
 }
 
-.header .subtitle {
-  font-size: 1rem;
-  color: dimgrey;
-  margin-top: -1rem;
+.subtitle {
+  color: grey;
+  margin: 0;
 }
 
-.filter-box {
-  background-color: white;
+/* CARDS */
+.filter-card,
+.action-card,
+.preview-card {
+  background: white;
   border-radius: 16px;
   padding: 1.5rem;
-  box-shadow: 0 4px 20px -5px rgba(150, 150, 150, 0.08);
-  display: flex;
-  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.02);
+  margin-bottom: 2rem;
 }
 
-.filter-row {
-  display: flex;
+/* LAYOUT GRIDS */
+.dropdowns-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
+  margin-bottom: 2.5rem;
 }
 
-.filter-row.sliders {
-  margin-top: 1rem;
+.full-width-row {
+  display: block;
+  width: 100%;
+  margin-bottom: 2.5rem;
 }
 
-.filter-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.secondary-sliders-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
 }
 
+/* FILTER GROUPS */
 .filter-group label {
+  display: block;
   font-size: 0.85rem;
   font-weight: 600;
-  color: black;
+  color: grey;
+  margin-bottom: 0.5rem;
 }
 
-.select-box {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0rem 1rem;
+.select-wrapper select {
+  width: 100%;
+  padding: 10px 12px;
   border: 1px solid lightgrey;
   border-radius: 8px;
-  background-color: white;
   font-size: 0.9rem;
   color: black;
-  cursor: pointer;
-  user-select: none;
-  min-height: 42px;
-}
-
-.select-box span {
-  opacity: 0.7;
-}
-
-.select-box svg {
-  color: dimgrey;
-}
-
-.sliders {
-   gap: 1.5rem; 
-}
-
-.slider-group { 
-  gap: 0.25rem;
-}
-
-.slider-group label {
-  font-size: 1rem;
-  font-weight: normal;
-  color: dimgrey;
-}
-
-.slider-wrapper {
-  display: flex;
-  align-items: center;
-}
-
-.slider-wrapper span { 
-  font-size: 0.8rem; 
-  color: dimgrey; 
-  white-space: nowrap;
-}
-
-.slider-group input[type="range"] {
-  flex-grow: 1;
-  width: 100%;
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-  background: transparent;
-  height: 16px;
-}
-.slider-group input[type="range"]:focus {
+  background: white;
   outline: none;
 }
 
-.slider-input {
-  width: auto;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  text-align: right;
-  font-size: 1.1rem;
-  font-weight: normal;
-  color: black;
-  margin-top: 0;
-  background-color: transparent;
-}
-.slider-input:focus {
-  outline: none;
-}
-
-.slider-input::-webkit-outer-spin-button,
-.slider-input::-webkit-inner-spin-button { margin: 0; -webkit-appearance: none; }
-.slider-input[type=number] { appearance: textfield; -moz-appearance: textfield; }
-
+/* SLIDER HEADERS */
 .slider-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 0.1rem;
+  margin-bottom: 0.8rem;
 }
 
-.slider-limits {
+.slider-header label {
+  font-size: 0.85rem;
+  color: grey;
+}
+
+.slider-value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: black;
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: grey;
+}
+
+/* --- SLIDER CSS --- */
+.range-container {
+  position: relative;
+  height: 14px;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.slider-track {
+  position: absolute;
+  width: 100%;
+  height: 6px;
+  background-color: #e5e7eb;
+  border-radius: 3px;
+  z-index: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Range Inputs */
+input[type="range"] {
+  -webkit-appearance: none;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+  height: 14px;
+  background: transparent;
+  z-index: 2;
+  margin: 0;
+  top: 0;
+}
+
+.range-container.single input[type="range"] {
+  pointer-events: auto;
+}
+
+/* THUMBS (BALLS) */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: all;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #ff5a5f;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease;
+  margin-top: 0;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #ff5a5f;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Z-Index for Dual Sliders */
+.thumb-left {
+  z-index: 3;
+}
+.thumb-right {
+  z-index: 4;
+}
+
+/* OTHER STYLES */
+.action-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 0.1rem;
+  background: #fafafa;
+  border: 1px dashed #ddd;
 }
 
-.slider-limits span {
-  font-size: 0.85rem;
-  color: dimgrey;
+.action-header h3 {
+  margin: 0 0 0.2rem 0;
+  font-size: 1.1rem;
 }
 
-.slider-group input[type="range"]::-webkit-slider-runnable-track {
-  width: 100%;
-  height: 4px;
-  background-color: lightgrey;
-  border-radius: 4px;
-}
-
-.slider-group input[type="range"]::-moz-range-track {
-  width: 100%;
-  height: 4px;
-  background-color: lightgrey;
-  border-radius: 4px;
-}
-.slider-group input[type="range"]::-moz-focus-outer {
-  border: 0;
-}
-
-/* COR ALTERADA */
-.slider-group input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  margin-top: -6px;
-  background-color: #FF5A5F;
-  height: 16px;
-  width: 16px;
-  border-radius: 50%;
-  border: none;
-  transition: transform 0.1s ease;
-}
-.slider-group input[type="range"]:active::-webkit-slider-thumb {
-  transform: scale(1.15);
-}
-
-/* COR ALTERADA */
-.slider-group input[type="range"]::-moz-range-thumb {
-  background-color: #FF5A5F;
-  height: 16px;
-  width: 16px;
-  border-radius: 50%;
-  border: none;
-  transition: transform 0.1s ease;
-}
-.slider-group input[type="range"]:active::-moz-range-thumb {
-  transform: scale(1.15);
-}
-
-.filter-row.date-range {
-  margin-top: 1rem;
-  gap: 0.75rem;
-}
-
-.date-range button {
-  padding: 0.6rem 1rem;
-  border: 1px solid lightgrey;
-  background-color: white;
-  color: dimgrey;
-  border-radius: 9999px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-/* COR ALTERADA */
-.date-range button.active {
-  background-color: rgba(255, 90, 95, 0.1);
-  color: #FF5A5F;
-  border-color: #FF5A5F;
-}
-
-.date-range button:not(.active):hover {
-  background-color: #f9fafb;
-  color: black;
-  border-color: black;
-}
-
-.format-box {
-  align-items: flex-start;
-  background-color: white;
-  border-radius: 16px;
-  padding: 1.5rem 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.format-box h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: black;
+.action-header p {
   margin: 0;
-  width: 100%;
-  text-align: left;
-}
-
-.format-nav {
-  display: flex;
-  gap: 0.75rem;
-  margin-left: 0;
-  margin-right: auto;
-  position: relative;
-}
-
-.format-glider {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%; 
-  /* COR ALTERADA */
-  background-color: rgba(255, 90, 95, 0.1);
-  border: 1px solid #FF5A5F;
-  border-radius: 9999px;
-  box-sizing: border-box;
-  z-index: 1;
-  opacity: 0;
-}
-
-.format-nav button {
-  background-color: white;
-  border: 1px solid lightgrey;
-  color: dimgrey;
-  padding: 0.6rem 1.5rem;
   font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  border-radius: 9999px;
-  transition: all 0.2s ease;
-  text-align: center;
-  position: relative;
-  z-index: 2;
+  color: grey;
 }
 
-/* COR ALTERADA */
-.format-nav button.active {
-  background-color: rgba(255, 90, 95, 0.1);
-  color: #FF5A5F;
-  border-color: #FF5A5F;
-}
-
-.format-nav button:not(.active):hover {
-  background-color: #f9fafb;
-  color: black;
-  border-color: black;
-}
-
-.generate-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 0rem;
-}
-/* COR ALTERADA */
-.btn-generate {
-  background-color: #FF5A5F;
+.btn-export {
+  background-color: #ff5a5f;
   color: white;
   border: none;
-  padding: 0.9rem 2rem;
-  font-size: 1rem;
+  padding: 12px 24px;
+  border-radius: 8px;
   font-weight: 600;
-  border-radius: 9999px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
-  box-shadow: 0 4px 6px rgba(237, 106, 106, 0.2);
+  transition: background 0.2s;
 }
-
-.btn-generate:hover {
+.btn-export:disabled {
+  background-color: #ffaeb1;
+  cursor: not-allowed;
+}
+.btn-export:hover:not(:disabled) {
   background-color: #e0484d;
 }
 
-.footer-note {
-  font-size: 0.8rem;
-  color: dimgrey;
+.preview-card h3 {
+  margin-top: 0;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 2px solid #f0f0f0;
+  color: grey;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+td {
+  padding: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.col-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.empty-row {
   text-align: center;
+  color: grey;
+  padding: 2rem;
+  font-style: italic;
+}
+
+.pagination-info {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: grey;
+  text-align: right;
 }
 </style>
