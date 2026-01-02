@@ -2,7 +2,7 @@
   <div class="anomalies-page">
     <div class="header-section">
       <div class="header-left">
-        <h1>Anomalies & Alerts</h1>
+        <h1>Anomalies</h1>
       </div>
     </div>
 
@@ -24,10 +24,34 @@
             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
           />
         </svg>
-        <select v-model="selectedCity" @change="loadData">
+        <select v-model="selectedCity">
           <option value="porto">Porto</option>
           <option value="lisbon">Lisbon</option>
           <option value="barcelona">Barcelona</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <svg
+          class="search-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+        >
+          <path
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
+        <select v-model="selectedPeriod">
+          <option v-for="p in store.PERIODS" :key="p.value" :value="p.value">
+            {{ p.label }}
+          </option>
         </select>
       </div>
 
@@ -49,20 +73,21 @@
           />
         </svg>
         <select
-          v-model="selectedNeighborhood"
-          :disabled="!neighborhoods.length"
+          v-model="selectedneighbourhood"
+          :disabled="!neighbourhoods.length"
         >
-          <option value="">All Neighborhoods</option>
-          <option v-for="n in neighborhoods" :key="n" :value="n">
+          <option value="">All Neighbourhoods</option>
+          <option v-for="n in neighbourhoods" :key="n" :value="n">
             {{ n }}
           </option>
         </select>
       </div>
 
-      <button class="btn-apply" @click="resetFilters">Reset</button>
+      <button class="btn-apply" @click="applyFilters">Apply</button>
+      <button class="btn-reset" @click="resetFilters">Reset</button>
     </div>
 
-    <div class="alerts-grid">
+    <div v-if="hasApplied" class="alerts-grid">
       <div class="alert-card">
         <div class="card-header-row">
           <div class="icon-wrapper red-icon">
@@ -203,7 +228,7 @@
       </div>
     </div>
 
-    <div class="details-section">
+    <div v-if="hasApplied" class="details-section">
       <h2>
         Detailed Listings: <span>{{ anomalyTitle }}</span>
       </h2>
@@ -217,12 +242,11 @@
               <th>ANOMALY CATEGORY</th>
               <th>LISTINGS COUNT</th>
               <th>AFFECTED HOSTS</th>
-              <th>AVG. SEVERITY</th>
               <th>EXPORT</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in currentTableData" :key="item.id">
+            <tr v-for="item in paginatedTableData" :key="item.id">
               <td>
                 <span class="tag-anomaly">{{ item.category }}</span>
               </td>
@@ -236,21 +260,57 @@
               </td>
 
               <td>
-                <span class="metric-value">{{
-                  activeAnomaly === "multiHost" ? item.metric : item.metric
-                }}</span>
+                <button class="btn-export-csv" @click="exportAnomalyRow(item)">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Export PDF
+                </button>
               </td>
-
-              <td><button class="btn-table">Inspect</button></td>
             </tr>
 
-            <tr v-if="currentTableData.length === 0">
-              <td colspan="5" class="empty-row">
+            <tr v-if="paginatedTableData.length === 0">
+              <td colspan="4" class="empty-row">
                 No anomalies found for this category.
               </td>
             </tr>
           </tbody>
         </table>
+
+        <div v-if="totalPages > 1" class="pagination">
+          <button
+            class="pagination-btn"
+            :disabled="currentPage === 1"
+            @click="goToPage(currentPage - 1)"
+          >
+            ← Previous
+          </button>
+          <span class="pagination-info">
+            Page {{ currentPage }} of {{ totalPages }} ({{
+              currentTableData.length
+            }}
+            items)
+          </span>
+          <button
+            class="pagination-btn"
+            :disabled="currentPage === totalPages"
+            @click="goToPage(currentPage + 1)"
+          >
+            Next →
+          </button>
+        </div>
 
         <div class="table-footer-bar"></div>
       </div>
@@ -259,41 +319,84 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, shallowRef } from "vue";
+import { ref, computed, shallowRef, watch, onMounted } from "vue";
 import { store } from "../store.js";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
-// --- STATE ---
 const selectedCity = ref("porto");
-const selectedNeighborhood = ref("");
+const selectedPeriod = ref("2025-09");
+const selectedneighbourhood = ref("");
+const appliedCity = ref("porto");
+const appliedPeriod = ref("2025-09");
+const appliedneighbourhood = ref("");
 const rawListings = shallowRef([]);
+const previewListings = shallowRef([]);
 const isLoading = ref(false);
 const activeAnomaly = ref("multiHost");
+const hasApplied = ref(false);
+const currentPage = ref(1);
+const itemsPerPage = 10;
 
-// --- COMPUTED HELPERS ---
+const loadNeighbourhoods = async () => {
+  let cityKey = selectedCity.value.toLowerCase();
+  if (cityKey === "lisboa") cityKey = "lisbon";
+  const periodKey = selectedPeriod.value.replace("-", "_");
+  try {
+    const response = await fetch(
+      `http://localhost:3000/${cityKey}_${periodKey}_listings`
+    );
+    if (!response.ok) throw new Error("Failed");
+    const data = await response.json();
+    previewListings.value = Object.freeze(data);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const applyFilters = () => {
+  appliedCity.value = selectedCity.value;
+  appliedPeriod.value = selectedPeriod.value;
+  appliedneighbourhood.value = selectedneighbourhood.value;
+  store.savePeriod(selectedPeriod.value);
+  hasApplied.value = true;
+  loadData();
+};
+
 const currencySymbol = computed(() => {
   const map = { USD: "$", EUR: "€", GBP: "£" };
   return map[store.state.currency] || "€";
 });
 
-const neighborhoods = computed(() => {
-  if (!rawListings.value.length) return [];
-  const set = new Set(rawListings.value.map((i) => i.neighbourhood_cleansed));
+const conversionRate = computed(() => {
+  const rates = { EUR: 1, USD: 1.08, GBP: 0.85 };
+  return rates[store.state.currency] || 1;
+});
+
+const neighbourhoods = computed(() => {
+  if (!previewListings.value.length) return [];
+  const set = new Set(
+    previewListings.value.map((i) => i.neighbourhood_cleansed)
+  );
   return Array.from(set).sort();
 });
 
 const formatPrice = (val) => {
   const num = parseFloat(String(val).replace(/[$,]/g, "")) || 0;
-  return `${currencySymbol.value}${num}`;
+  const converted = Math.round(num * conversionRate.value);
+  return `${currencySymbol.value}${converted}`;
 };
 
-// --- DATA LOADING ---
 const loadData = async () => {
   isLoading.value = true;
-  let cityKey = selectedCity.value.toLowerCase();
+  let cityKey = appliedCity.value.toLowerCase();
   if (cityKey === "lisboa") cityKey = "lisbon";
+  const periodKey = appliedPeriod.value.replace("-", "_");
 
   try {
-    const response = await fetch(`http://localhost:3000/${cityKey}_listings`);
+    const response = await fetch(
+      `http://localhost:3000/${cityKey}_${periodKey}_listings`
+    );
     if (!response.ok) throw new Error("Failed");
     const data = await response.json();
     rawListings.value = Object.freeze(data);
@@ -305,18 +408,30 @@ const loadData = async () => {
 };
 
 const resetFilters = () => {
-  selectedNeighborhood.value = "";
+  selectedCity.value = "porto";
+  selectedPeriod.value = "2025-09";
+  selectedneighbourhood.value = "";
+  appliedCity.value = "porto";
+  appliedPeriod.value = "2025-09";
+  appliedneighbourhood.value = "";
+  hasApplied.value = false;
+  store.savePeriod("2025-09");
+  loadNeighbourhoods();
 };
 
-// --- ANOMALY LOGIC ---
+watch([selectedCity, selectedPeriod], () => {
+  selectedneighbourhood.value = "";
+  loadNeighbourhoods();
+});
 
-// 1. Multi-Host Data
+onMounted(loadNeighbourhoods);
+
 const multiHostData = computed(() => {
   const hosts = {};
   rawListings.value.forEach((item) => {
     if (
-      selectedNeighborhood.value &&
-      item.neighbourhood_cleansed !== selectedNeighborhood.value
+      appliedneighbourhood.value &&
+      item.neighbourhood_cleansed !== appliedneighbourhood.value
     )
       return;
 
@@ -329,7 +444,6 @@ const multiHostData = computed(() => {
   return Object.values(hosts)
     .filter((h) => h.count > 10)
     .sort((a, b) => b.count - a.count)
-    .slice(0, 50)
     .map((h) => ({
       id: h.id,
       name: h.name,
@@ -340,36 +454,38 @@ const multiHostData = computed(() => {
     }));
 });
 
-// 2. High Occupancy (>300 days)
 const highOccupancyData = computed(() => {
   return rawListings.value
     .filter((i) => {
       if (
-        selectedNeighborhood.value &&
-        i.neighbourhood_cleansed !== selectedNeighborhood.value
+        appliedneighbourhood.value &&
+        i.neighbourhood_cleansed !== appliedneighbourhood.value
       )
         return false;
-      const occupied = 365 - (parseInt(i.availability_365) || 0);
+      const avail = parseInt(i.availability_365);
+      if (isNaN(avail)) return false;
+      const occupied = 365 - avail;
       return occupied > 300;
     })
-    .slice(0, 50)
-    .map((i) => ({
-      id: i.id,
-      name: i.name,
-      sub: i.neighbourhood_cleansed,
-      category: "High Occupancy",
-      metric: `${365 - (parseInt(i.availability_365) || 0)} days`,
-      price: formatPrice(i.price),
-    }));
+    .map((i) => {
+      const occupied = 365 - parseInt(i.availability_365);
+      return {
+        id: i.id,
+        name: i.name,
+        sub: i.neighbourhood_cleansed,
+        category: "High Occupancy",
+        metric: `${occupied} days`,
+        price: formatPrice(i.price),
+      };
+    });
 });
 
-// 3. Low Rating (< 3 Stars)
 const lowRatingData = computed(() => {
   return rawListings.value
     .filter((i) => {
       if (
-        selectedNeighborhood.value &&
-        i.neighbourhood_cleansed !== selectedNeighborhood.value
+        appliedneighbourhood.value &&
+        i.neighbourhood_cleansed !== appliedneighbourhood.value
       )
         return false;
       if (!i.review_scores_rating) return false;
@@ -377,30 +493,31 @@ const lowRatingData = computed(() => {
       if (r > 5) r = r / 20;
       return r < 3 && r > 0;
     })
-    .slice(0, 50)
-    .map((i) => ({
-      id: i.id,
-      name: i.name,
-      sub: i.neighbourhood_cleansed,
-      category: "Poor Quality",
-      metric: `${i.review_scores_rating} ★`,
-      price: formatPrice(i.price),
-    }));
+    .map((i) => {
+      let rating = parseFloat(i.review_scores_rating);
+      if (rating > 5) rating = rating / 20;
+      return {
+        id: i.id,
+        name: i.name,
+        sub: i.neighbourhood_cleansed,
+        category: "Poor Quality",
+        metric: rating.toFixed(1),
+        price: formatPrice(i.price),
+      };
+    });
 });
 
-// 4. Low Occupancy (< 60 days)
 const lowOccupancyData = computed(() => {
   return rawListings.value
     .filter((i) => {
       if (
-        selectedNeighborhood.value &&
-        i.neighbourhood_cleansed !== selectedNeighborhood.value
+        appliedneighbourhood.value &&
+        i.neighbourhood_cleansed !== appliedneighbourhood.value
       )
         return false;
       const occupied = 365 - (parseInt(i.availability_365) || 0);
       return occupied < 60;
     })
-    .slice(0, 50)
     .map((i) => ({
       id: i.id,
       name: i.name,
@@ -411,7 +528,6 @@ const lowOccupancyData = computed(() => {
     }));
 });
 
-// 5. Price Outliers (> 4x Avg)
 const priceOutlierData = computed(() => {
   if (!rawListings.value.length) return [];
   let total = 0,
@@ -425,8 +541,8 @@ const priceOutlierData = computed(() => {
   return rawListings.value
     .filter((i) => {
       if (
-        selectedNeighborhood.value &&
-        i.neighbourhood_cleansed !== selectedNeighborhood.value
+        appliedneighbourhood.value &&
+        i.neighbourhood_cleansed !== appliedneighbourhood.value
       )
         return false;
       const p = parseFloat(String(i.price).replace(/[$,]/g, "")) || 0;
@@ -437,7 +553,6 @@ const priceOutlierData = computed(() => {
         parseFloat(String(b.price).replace(/[$,]/g, "")) -
         parseFloat(String(a.price).replace(/[$,]/g, ""))
     )
-    .slice(0, 50)
     .map((i) => ({
       id: i.id,
       name: i.name,
@@ -448,19 +563,17 @@ const priceOutlierData = computed(() => {
     }));
 });
 
-// 6. Zero Price
 const zeroPriceData = computed(() => {
   return rawListings.value
     .filter((i) => {
       if (
-        selectedNeighborhood.value &&
-        i.neighbourhood_cleansed !== selectedNeighborhood.value
+        appliedneighbourhood.value &&
+        i.neighbourhood_cleansed !== appliedneighbourhood.value
       )
         return false;
       const p = parseFloat(String(i.price).replace(/[$,]/g, "")) || 0;
       return p === 0;
     })
-    .slice(0, 50)
     .map((i) => ({
       id: i.id,
       name: i.name || "Unknown Listing",
@@ -490,6 +603,27 @@ const currentTableData = computed(() => {
   }
 });
 
+const totalPages = computed(() =>
+  Math.ceil(currentTableData.value.length / itemsPerPage)
+);
+
+const paginatedTableData = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  return currentTableData.value.slice(start, end);
+});
+
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
+};
+
+// Reset page when anomaly type changes
+watch(activeAnomaly, () => {
+  currentPage.value = 1;
+});
+
 const anomalyTitle = computed(() => {
   switch (activeAnomaly.value) {
     case "multiHost":
@@ -509,35 +643,119 @@ const anomalyTitle = computed(() => {
   }
 });
 
-onMounted(loadData);
+const exportAnomalyRow = (item) => {
+  const doc = new jsPDF();
+
+  // Title
+  doc.setFontSize(18);
+  doc.text(`Anomaly Report - ${item.category}`, 14, 22);
+
+  // Metadata
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  const cityLabel =
+    appliedCity.value.charAt(0).toUpperCase() + appliedCity.value.slice(1);
+  const periodLabel =
+    store.PERIODS.find((p) => p.value === appliedPeriod.value)?.label ||
+    appliedPeriod.value;
+  const neighbourhoodLabel = appliedneighbourhood.value || "All Neighbourhoods";
+  doc.text(
+    `Generated: ${new Date().toLocaleDateString()} | City: ${cityLabel} | Period: ${periodLabel} | Neighbourhood: ${neighbourhoodLabel}`,
+    14,
+    30
+  );
+
+  // Anomaly details
+  doc.setFontSize(12);
+  doc.setTextColor(0);
+
+  const metricLabel = (() => {
+    switch (activeAnomaly.value) {
+      case "multiHost":
+        return "Listings Count";
+      case "highOccupancy":
+        return "Days Occupied";
+      case "lowRating":
+        return "Rating";
+      case "lowOccupancy":
+        return "Days Occupied";
+      case "priceSpike":
+        return "Price Variation";
+      case "zeroPrice":
+        return "Price Status";
+      default:
+        return "Metric";
+    }
+  })();
+
+  const details = [
+    ["Category", item.category],
+    ["ID", String(item.id)],
+    [
+      activeAnomaly.value === "multiHost" ? "Host Name" : "Listing Name",
+      item.name,
+    ],
+  ];
+
+  if (activeAnomaly.value !== "multiHost") {
+    details.push(["Location", item.sub]);
+  }
+
+  details.push([metricLabel, item.metric]);
+
+  if (item.price && item.price !== "-") {
+    details.push(["Price", item.price]);
+  }
+
+  autoTable(doc, {
+    body: details,
+    startY: 40,
+    theme: "plain",
+    styles: {
+      fontSize: 11,
+      cellPadding: 4,
+    },
+    columnStyles: {
+      0: { fontStyle: "bold", cellWidth: 50 },
+      1: { cellWidth: 120 },
+    },
+  });
+
+  doc.save(
+    `anomaly_${item.category.toLowerCase().replace(/\s+/g, "_")}_${item.id}.pdf`
+  );
+};
 </script>
 
 <style scoped>
+/* LAYOUT */
 .anomalies-page {
   width: 100%;
-  padding: 2rem 1rem;
   max-width: 1000px;
+  padding: 2rem 1rem;
   color: black;
 }
 
+/* HEADER */
 .header-section {
   margin-bottom: 2rem;
 }
+
 .header-section h1 {
-  font-weight: 800;
+  margin: 0 0 1.5rem 0;
   font-size: 2rem;
-  margin: 0 0 0.5rem 0;
+  font-weight: 800;
 }
 
 /* FILTERS BAR */
 .filters-bar {
   display: flex;
-  gap: 1rem;
-  background: white;
-  padding: 1rem;
-  border-radius: 12px;
-  margin-bottom: 2rem;
   align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 16px;
 }
 
 .input-group {
@@ -547,8 +765,8 @@ onMounted(loadData);
 
 .search-icon {
   position: absolute;
-  left: 12px;
   top: 50%;
+  left: 12px;
   transform: translateY(-50%);
   color: grey;
   pointer-events: none;
@@ -557,23 +775,37 @@ onMounted(loadData);
 .filters-bar select {
   width: 100%;
   padding: 10px 12px 10px 40px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
   font-size: 0.9rem;
   color: black;
   background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   outline: none;
   cursor: pointer;
 }
 
 .btn-apply {
-  background-color: #ff5a5f;
-  color: white;
-  border: none;
   padding: 10px 24px;
-  border-radius: 8px;
   font-weight: 600;
+  color: white;
+  background-color: #ff5a5f;
+  border: none;
+  border-radius: 8px;
   cursor: pointer;
+}
+
+.btn-reset {
+  padding: 10px 24px;
+  font-weight: 600;
+  color: #666;
+  background-color: #f0f0f0;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-reset:hover {
+  background-color: #e0e0e0;
 }
 
 /* ALERTS GRID */
@@ -585,15 +817,15 @@ onMounted(loadData);
 }
 
 .alert-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.02);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   min-height: 200px;
+  padding: 1.5rem;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.02);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
 
 .card-header-row {
@@ -604,51 +836,53 @@ onMounted(loadData);
 }
 
 .icon-wrapper {
-  color: #ff5a5f;
   display: flex;
+  color: #ff5a5f;
 }
+
 .icon-wrapper svg {
   width: 24px;
   height: 24px;
 }
 
 .alert-card h3 {
+  margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
-  margin: 0;
-  color: #333;
   line-height: 1.3;
+  color: #333;
 }
 
 .card-description {
-  font-size: 0.85rem;
-  color: grey;
-  line-height: 1.5;
-  margin: 0 0 1.5rem 0;
   flex-grow: 1;
+  margin: 0 0 1.5rem 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: grey;
 }
 
 .btn-view {
   width: 100%;
-  background-color: #fff0f0;
-  color: #ff5a5f;
-  border: none;
   padding: 10px;
-  border-radius: 12px;
-  font-weight: 600;
   font-size: 0.85rem;
+  font-weight: 600;
+  color: #ff5a5f;
+  background-color: #fff0f0;
+  border: none;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s;
 }
+
 .btn-view:hover {
   background-color: #ffe0e0;
 }
 
-/* DETAILS SECTION & TABLE */
+/* DETAILS SECTION */
 .details-section h2 {
+  margin-bottom: 0.5rem;
   font-size: 1.4rem;
   font-weight: 800;
-  margin-bottom: 0.5rem;
   color: #333;
 }
 
@@ -656,57 +890,60 @@ onMounted(loadData);
   color: #ff5a5f;
 }
 
+/* TABLE */
 .table-card {
+  overflow: hidden;
   background: white;
   border-radius: 16px;
-  overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
 
 table {
   width: 100%;
-  border-collapse: collapse;
   font-size: 0.9rem;
+  border-collapse: collapse;
 }
 
 th {
-  text-align: left;
   padding: 16px 24px;
-  background-color: #f9fafb;
-  color: #6b7280;
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  color: #6b7280;
+  text-align: left;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background-color: #f9fafb;
 }
 
 td {
   padding: 16px 24px;
-  border-bottom: 1px solid #f0f0f0;
-  vertical-align: middle;
   color: #333;
+  vertical-align: middle;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .name-cell {
   display: flex;
   flex-direction: column;
 }
+
 .sub-text {
   font-size: 0.8rem;
   color: grey;
 }
+
 .fw-bold {
   font-weight: 700;
 }
 
 .tag-anomaly {
-  background: #fff0f0;
-  color: #ff5a5f;
   padding: 6px 10px;
-  border-radius: 8px;
   font-size: 0.75rem;
   font-weight: 700;
+  color: #ff5a5f;
   text-transform: uppercase;
+  background: #fff0f0;
+  border-radius: 8px;
 }
 
 .metric-value {
@@ -715,19 +952,42 @@ td {
 }
 
 .btn-table {
-  border: 1px solid #e5e7eb;
-  background: white;
-  color: #333;
   padding: 6px 14px;
-  border-radius: 6px;
-  cursor: pointer;
   font-size: 0.75rem;
   font-weight: 600;
+  color: #333;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
   transition: all 0.2s;
 }
+
 .btn-table:hover {
   background: #f9fafb;
   border-color: #d1d5db;
+}
+
+.btn-export-csv {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #ff5a5f;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-export-csv:hover {
+  opacity: 0.7;
+}
+
+.btn-export-csv svg {
+  flex-shrink: 0;
 }
 
 .table-footer-bar {
@@ -735,11 +995,50 @@ td {
   background: white;
 }
 
+/* PAGINATION */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: white;
+  border-top: 1px solid #f0f0f0;
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #ff5a5f;
+  background: white;
+  border: 1px solid #ff5a5f;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #ff5a5f;
+  color: white;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+/* STATES */
 .empty-row,
 .loading-state {
-  text-align: center;
   padding: 3rem;
   color: grey;
   font-style: italic;
+  text-align: center;
 }
 </style>

@@ -2,9 +2,6 @@
   <div class="export-page">
     <div class="header-section">
       <h1>Export Data</h1>
-      <p class="subtitle">
-        Generate and download a report based on your selected filters.
-      </p>
     </div>
 
     <section class="filter-card">
@@ -16,6 +13,21 @@
               <option value="porto">Porto</option>
               <option value="lisbon">Lisbon</option>
               <option value="barcelona">Barcelona</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label>Period</label>
+          <div class="select-wrapper">
+            <select v-model="selectedPeriod" @change="onPeriodChange">
+              <option
+                v-for="p in store.PERIODS"
+                :key="p.value"
+                :value="p.value"
+              >
+                {{ p.label }}
+              </option>
             </select>
           </div>
         </div>
@@ -197,24 +209,33 @@ import { store } from "../store.js";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-// --- STATE ---
 const selectedCity = ref("porto");
+const selectedPeriod = ref(store.state.period);
 const rawListings = ref([]);
 const isLoading = ref(false);
+
+const onPeriodChange = () => {
+  store.savePeriod(selectedPeriod.value);
+  loadData();
+};
 
 const filters = reactive({
   neighbourhood: "",
   propertyType: "",
   priceMin: 0,
-  priceMax: 510, // MUDANÇA: Default max é 510 (que representa 500+)
+  priceMax: 510,
   minRating: 1,
   minGuests: 1,
 });
 
-// --- COMPUTED ---
 const currencySymbol = computed(() => {
   const map = { USD: "$", EUR: "€", GBP: "£" };
   return map[store.state.currency] || "€";
+});
+
+const conversionRate = computed(() => {
+  const rates = { EUR: 1, USD: 1.08, GBP: 0.85 };
+  return rates[store.state.currency] || 1;
 });
 
 const neighbourhoods = computed(() => {
@@ -229,33 +250,24 @@ const propertyTypes = computed(() => {
 
 const filteredListings = computed(() => {
   return rawListings.value.filter((item) => {
-    // Price Logic Atualizada
     const price = parseFloat(String(item.price).replace(/[$,]/g, "")) || 0;
 
-    if (price <= 0) return false; // Ignorar preços zero
+    if (price <= 0) return false;
     if (price < filters.priceMin) return false;
-
-    // Lógica 500+: Se priceMax < 510, aplicamos o limite.
-    // Se for 510, ignoramos o limite superior (mostra tudo > priceMin)
     if (filters.priceMax < 510 && price > filters.priceMax) return false;
 
-    // Neighbourhood
     if (
       filters.neighbourhood &&
       item.neighbourhood_cleansed !== filters.neighbourhood
     )
       return false;
-
-    // Property Type
     if (filters.propertyType && item.room_type !== filters.propertyType)
       return false;
 
-    // Rating
     const rating = parseFloat(item.review_scores_rating || 0);
     const normRating = rating > 5 ? rating / 20 : rating;
     if (normRating < filters.minRating) return false;
 
-    // Capacity
     const capacity = parseInt(item.accommodates) || 1;
     if (filters.minGuests >= 10) {
       if (capacity < 10) return false;
@@ -269,14 +281,16 @@ const filteredListings = computed(() => {
 
 const previewList = computed(() => filteredListings.value.slice(0, 10));
 
-// --- ACTIONS ---
 const loadData = async () => {
   isLoading.value = true;
   let cityKey = selectedCity.value.toLowerCase();
   if (cityKey === "lisboa") cityKey = "lisbon";
+  const periodKey = selectedPeriod.value.replace("-", "_");
 
   try {
-    const response = await fetch(`http://localhost:3000/${cityKey}_listings`);
+    const response = await fetch(
+      `http://localhost:3000/${cityKey}_${periodKey}_listings`
+    );
     if (!response.ok) throw new Error("Failed to fetch");
     rawListings.value = await response.json();
 
@@ -293,7 +307,6 @@ const onCityChange = () => {
   loadData();
 };
 
-// --- PDF EXPORT ---
 const exportPDF = () => {
   const doc = new jsPDF();
   doc.setFontSize(18);
@@ -304,12 +317,14 @@ const exportPDF = () => {
     activeFilters.push(`Hood: ${filters.neighbourhood}`);
   if (filters.propertyType) activeFilters.push(`Type: ${filters.propertyType}`);
 
-  // Display 500+ correct text
-  const maxPrice = filters.priceMax >= 510 ? "500+" : filters.priceMax;
+  const minPriceConverted = Math.round(filters.priceMin * conversionRate.value);
+  const maxPriceConverted =
+    filters.priceMax >= 510
+      ? "500+"
+      : Math.round(filters.priceMax * conversionRate.value);
   activeFilters.push(
-    `Price: ${currencySymbol.value}${filters.priceMin}-${maxPrice}`
+    `Price: ${currencySymbol.value}${minPriceConverted}-${maxPriceConverted}`
   );
-
   activeFilters.push(`Rating: ${filters.minRating}+`);
   activeFilters.push(`Guests: ${filters.minGuests}+`);
 
@@ -326,11 +341,12 @@ const exportPDF = () => {
 
   const tableBody = filteredListings.value.slice(0, 1000).map((item) => {
     const price = parseFloat(String(item.price).replace(/[$,]/g, "")) || 0;
+    const convertedPrice = Math.round(price * conversionRate.value);
     return [
       item.name,
       item.neighbourhood_cleansed,
       item.room_type,
-      price > 0 ? `${currencySymbol.value}${price}` : "N/A",
+      price > 0 ? `${currencySymbol.value}${convertedPrice}` : "N/A",
       item.accommodates,
       item.review_scores_rating || "-",
     ];
@@ -361,16 +377,13 @@ const exportPDF = () => {
   doc.save(`report_${selectedCity.value}_${Date.now()}.pdf`);
 };
 
-// --- INIT ---
 onMounted(() => {
   loadData();
 });
 
-// --- WATCHERS DE BLOQUEIO (GAP) ---
 watch(
   () => filters.priceMin,
   (val) => {
-    // Se o mínimo tentar passar o máximo (menos o gap de 10), empurra-o para trás
     if (val >= filters.priceMax - 10) {
       filters.priceMin = filters.priceMax - 10;
     }
@@ -380,7 +393,6 @@ watch(
 watch(
   () => filters.priceMax,
   (val) => {
-    // Se o máximo tentar baixar do mínimo (mais o gap de 10), empurra-o para a frente
     if (val <= filters.priceMin + 10) {
       filters.priceMax = filters.priceMin + 10;
     }
@@ -389,45 +401,42 @@ watch(
 </script>
 
 <style scoped>
+/* LAYOUT */
 .export-page {
   width: 100%;
-  padding: 2rem 1rem;
-  max-width: 900px;
+  max-width: 1000px;
   margin: 0 auto;
+  padding: 2rem 1rem;
   color: black;
 }
 
+/* HEADER */
 .header-section {
   margin-bottom: 2rem;
 }
 
 .header-section h1 {
-  font-weight: 800;
-  font-size: 2rem;
   margin: 0 0 0.5rem 0;
-}
-
-.subtitle {
-  color: grey;
-  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
 }
 
 /* CARDS */
 .filter-card,
 .action-card,
 .preview-card {
-  background: white;
-  border-radius: 16px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.02);
   margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.02);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
 
 /* LAYOUT GRIDS */
 .dropdowns-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 1.5rem;
   margin-bottom: 2.5rem;
 }
@@ -447,20 +456,20 @@ watch(
 /* FILTER GROUPS */
 .filter-group label {
   display: block;
+  margin-bottom: 0.5rem;
   font-size: 0.85rem;
   font-weight: 600;
   color: grey;
-  margin-bottom: 0.5rem;
 }
 
 .select-wrapper select {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid lightgrey;
-  border-radius: 8px;
   font-size: 0.9rem;
   color: black;
   background: white;
+  border: 1px solid lightgrey;
+  border-radius: 8px;
   outline: none;
 }
 
@@ -491,56 +500,54 @@ watch(
   color: grey;
 }
 
-/* --- SLIDER CSS --- */
+/* RANGE SLIDER */
 .range-container {
   position: relative;
-  height: 14px;
-  margin-top: 10px;
   display: flex;
   align-items: center;
+  height: 14px;
+  margin-top: 10px;
 }
 
 .slider-track {
   position: absolute;
+  top: 50%;
+  z-index: 0;
   width: 100%;
   height: 6px;
   background-color: #e5e7eb;
   border-radius: 3px;
-  z-index: 0;
-  top: 50%;
   transform: translateY(-50%);
 }
 
-/* Range Inputs */
 input[type="range"] {
-  -webkit-appearance: none;
-  pointer-events: none;
   position: absolute;
+  top: 0;
+  z-index: 2;
   width: 100%;
   height: 14px;
-  background: transparent;
-  z-index: 2;
   margin: 0;
-  top: 0;
+  background: transparent;
+  pointer-events: none;
+  -webkit-appearance: none;
 }
 
 .range-container.single input[type="range"] {
   pointer-events: auto;
 }
 
-/* THUMBS (BALLS) */
 input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  pointer-events: all;
   width: 14px;
   height: 14px;
-  border-radius: 50%;
+  margin-top: 0;
   background-color: #ff5a5f;
   border: none;
-  cursor: pointer;
+  border-radius: 50%;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  pointer-events: all;
   transition: transform 0.1s ease;
-  margin-top: 0;
+  -webkit-appearance: none;
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
@@ -550,22 +557,22 @@ input[type="range"]::-webkit-slider-thumb:hover {
 input[type="range"]::-moz-range-thumb {
   width: 14px;
   height: 14px;
-  border-radius: 50%;
   background-color: #ff5a5f;
   border: none;
-  cursor: pointer;
+  border-radius: 50%;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
 }
 
-/* Z-Index for Dual Sliders */
 .thumb-left {
   z-index: 3;
 }
+
 .thumb-right {
   z-index: 4;
 }
 
-/* OTHER STYLES */
+/* ACTION CARD */
 .action-card {
   display: flex;
   justify-content: space-between;
@@ -586,27 +593,30 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .btn-export {
-  background-color: #ff5a5f;
-  color: white;
-  border: none;
   padding: 12px 24px;
-  border-radius: 8px;
   font-weight: 600;
+  color: white;
+  background-color: #ff5a5f;
+  border: none;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s;
 }
+
 .btn-export:disabled {
   background-color: #ffaeb1;
   cursor: not-allowed;
 }
+
 .btn-export:hover:not(:disabled) {
   background-color: #e0484d;
 }
 
+/* PREVIEW CARD */
 .preview-card h3 {
   margin-top: 0;
-  font-size: 1.1rem;
   margin-bottom: 1rem;
+  font-size: 1.1rem;
 }
 
 .table-wrapper {
@@ -615,18 +625,18 @@ input[type="range"]::-moz-range-thumb {
 
 table {
   width: 100%;
-  border-collapse: collapse;
   font-size: 0.9rem;
+  border-collapse: collapse;
 }
 
 th {
-  text-align: left;
   padding: 12px;
-  border-bottom: 2px solid #f0f0f0;
-  color: grey;
   font-size: 0.75rem;
+  color: grey;
+  text-align: left;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  border-bottom: 2px solid #f0f0f0;
 }
 
 td {
@@ -640,10 +650,10 @@ td {
 }
 
 .empty-row {
-  text-align: center;
-  color: grey;
   padding: 2rem;
+  color: grey;
   font-style: italic;
+  text-align: center;
 }
 
 .pagination-info {

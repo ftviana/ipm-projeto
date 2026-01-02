@@ -12,36 +12,12 @@ const routes = [
     path: "/",
     component: DefaultLayout,
     children: [
-      {
-        path: "",
-        name: "",
-        component: HomeView,
-      },
-      {
-        path: "exploredata", // Renders at '/exploredata'
-        name: "exploredata",
-        component: ExploreDataView,
-      },
-      {
-        path: "compare", // Renders at '/compare'
-        name: "compare",
-        component: CompareView,
-      },
-      {
-        path: "anomalies", // Renders at '/anomalies'
-        name: "anomalies",
-        component: AnomaliesView,
-      },
-      {
-        path: "export", // Renders at '/export'
-        name: "export",
-        component: ExportView,
-      },
-      {
-        path: "faq", // Renders at '/faq'
-        name: "faq",
-        component: FAQView,
-      },
+      { path: "", name: "", component: HomeView },
+      { path: "exploredata", name: "exploredata", component: ExploreDataView },
+      { path: "compare", name: "compare", component: CompareView },
+      { path: "anomalies", name: "anomalies", component: AnomaliesView },
+      { path: "export", name: "export", component: ExportView },
+      { path: "faq", name: "faq", component: FAQView },
     ],
   },
 ];

@@ -6,10 +6,24 @@
       </div>
 
       <div class="header-actions">
-        <select v-model="selectedCity" @change="loadData" class="city-select">
+        <select
+          v-model="selectedCity"
+          @change="onCityChange"
+          class="city-select"
+        >
           <option value="porto">Porto</option>
           <option value="lisbon">Lisbon</option>
           <option value="barcelona">Barcelona</option>
+        </select>
+
+        <select
+          v-model="selectedPeriod"
+          @change="onPeriodChange"
+          class="city-select"
+        >
+          <option v-for="p in store.PERIODS" :key="p.value" :value="p.value">
+            {{ p.label }}
+          </option>
         </select>
 
         <button class="btn-primary" @click="router.push('/export')">
@@ -31,18 +45,12 @@
         <div class="card kpi-card">
           <h3>Active Listings</h3>
           <div class="kpi-value">{{ formattedMetrics.count }}</div>
-          <div class="kpi-subtext trend-positive">
-            <span>↑</span> 5.2% vs last year
-          </div>
         </div>
 
         <div class="card kpi-card">
           <h3>Avg. Price/Night ({{ currencySymbol }})</h3>
           <div class="kpi-value">
             {{ currencySymbol }}{{ formattedMetrics.price }}
-          </div>
-          <div class="kpi-subtext trend-negative">
-            <span>↓</span> 1.2% vs last year
           </div>
         </div>
 
@@ -134,11 +142,11 @@
     </div>
 
     <div class="card full-width-card">
-      <h3>Top Neighborhoods — Price & Occupancy</h3>
+      <h3>Top Neighbourhoods — Price & Occupancy</h3>
 
-      <div v-if="topNeighborhoods.length > 0" class="circles-container">
+      <div v-if="topneighbourhoods.length > 0" class="circles-container">
         <div
-          v-for="(item, index) in topNeighborhoods"
+          v-for="(item, index) in topneighbourhoods"
           :key="index"
           class="circle-item"
         >
@@ -149,7 +157,7 @@
           <span class="circle-price">{{ currencySymbol }}{{ item.price }}</span>
         </div>
       </div>
-      <div v-else class="loading-text">Calculating neighborhood data...</div>
+      <div v-else class="loading-text">Calculating neighbourhood data...</div>
     </div>
   </div>
 </template>
@@ -171,14 +179,25 @@ import HeatmapMap from "../components/HeatmapMap.vue";
 
 const router = useRouter();
 
-// --- STATE ---
 const selectedCity = ref("porto");
+const selectedPeriod = ref(store.state.period);
 const heatmapMode = ref("Price");
 const rawListings = shallowRef([]);
+const historyData = ref([]);
 const isLoading = ref(true);
 const errorMessage = ref(null);
 
-// --- CURRENCY ---
+const onPeriodChange = () => {
+  store.savePeriod(selectedPeriod.value);
+  loadData();
+};
+
+const onCityChange = () => {
+  selectedPeriod.value = "2025-09";
+  store.savePeriod("2025-09");
+  loadData();
+};
+
 const conversionRates = {
   USD: { rate: 1.0, symbol: "$" },
   EUR: { rate: 0.94, symbol: "€" },
@@ -190,7 +209,6 @@ const currentCurrencyInfo = computed(
 );
 const currencySymbol = computed(() => currentCurrencyInfo.value.symbol);
 
-// --- HELPERS ---
 const formatCityName = (val) =>
   val ? val.charAt(0).toUpperCase() + val.slice(1) : "";
 
@@ -200,7 +218,6 @@ const cleanPrice = (val) => {
   return parseFloat(String(val).replace(/[$,]/g, "")) || 0;
 };
 
-// --- DATA LOADING ---
 let abortController = null;
 
 const loadData = async () => {
@@ -214,22 +231,30 @@ const loadData = async () => {
   let cityKey = selectedCity.value.toLowerCase();
   if (cityKey === "lisboa") cityKey = "lisbon";
 
-  const resourceName = `${cityKey}_listings`;
+  const periodKey = selectedPeriod.value.replace("-", "_");
+  const resourceName = `${cityKey}_${periodKey}_listings`;
+  const historyName = `${cityKey}_history`;
 
   try {
-    const response = await fetch(`http://localhost:3000/${resourceName}`, {
-      signal: abortController.signal,
-    });
+    const [listingsRes, historyRes] = await Promise.all([
+      fetch(`http://localhost:3000/${resourceName}`, {
+        signal: abortController.signal,
+      }),
+      fetch(`http://localhost:3000/${historyName}`, {
+        signal: abortController.signal,
+      }),
+    ]);
 
-    if (!response.ok) throw new Error(`API Error (${response.status})`);
+    if (!listingsRes.ok) throw new Error(`API Error (${listingsRes.status})`);
 
-    const data = await response.json();
-
+    const data = await listingsRes.json();
     rawListings.value = Object.freeze(data);
+
+    if (historyRes.ok) {
+      historyData.value = await historyRes.json();
+    }
   } catch (err) {
-    if (err.name === "AbortError") {
-      console.log("Fetch cancelled");
-    } else {
+    if (err.name !== "AbortError") {
       console.error(err);
       errorMessage.value = `Failed to load ${resourceName}. Check server.`;
     }
@@ -240,7 +265,6 @@ const loadData = async () => {
   }
 };
 
-// --- GLIDER LOGIC ---
 const toggleContainer = ref(null);
 const toggleGlider = ref(null);
 
@@ -256,32 +280,28 @@ const updateToggleGlider = async () => {
   }
 };
 
-watch(heatmapMode, () => {
-  updateToggleGlider();
-});
+watch(heatmapMode, updateToggleGlider);
 
 onMounted(() => {
   loadData();
-  setTimeout(() => updateToggleGlider(), 100);
+  setTimeout(updateToggleGlider, 100);
 });
 
-// CLEANUP ON EXIT
 onBeforeUnmount(() => {
   if (abortController) abortController.abort();
   rawListings.value = [];
 });
 
-// --- STATISTICS ---
 const calculateStats = (data) => {
+  if (!data)
+    return { count: 0, avgPrice: 0, avgOcc: 0, avgRating: 0, validR: 0 };
+
   let count = 0,
     totalPrice = 0,
     totalAvail = 0,
     totalRating = 0,
     validP = 0,
     validR = 0;
-
-  if (!data)
-    return { count: 0, avgPrice: 0, avgOcc: 0, avgRating: 0, validR: 0 };
 
   for (let i = 0; i < data.length; i++) {
     const item = data[i];
@@ -322,47 +342,19 @@ const formattedMetrics = computed(() => {
   };
 });
 
-// --- TRENDS ---
 const trendData = computed(() => {
-  if (!rawListings.value.length) return [];
-
-  const groups = {};
-
-  for (let i = 0; i < rawListings.value.length; i++) {
-    const item = rawListings.value[i];
-    if (!item.last_review) continue;
-    const dateKey = item.last_review.substring(0, 7);
-
-    if (!groups[dateKey]) {
-      groups[dateKey] = { priceSum: 0, availSum: 0, count: 0 };
-    }
-
-    groups[dateKey].priceSum += cleanPrice(item.price);
-    const avail = parseInt(item.availability_365) || 0;
-    groups[dateKey].availSum += 365 - avail;
-    groups[dateKey].count++;
-  }
-
-  const sortedKeys = Object.keys(groups).sort().slice(-6);
-
-  return sortedKeys.map((key) => {
-    const g = groups[key];
-    const dateObj = new Date(key + "-01");
-    const label = dateObj.toLocaleString("en-US", { month: "short" });
-
-    return {
-      label: label,
-      price: (g.priceSum / g.count) * currentCurrencyInfo.value.rate,
-      occupancy: (g.availSum / g.count / 365) * 100,
-    };
-  });
+  if (!historyData.value.length) return [];
+  return historyData.value.map((h) => ({
+    label: h.label,
+    price: h.avgPrice * currentCurrencyInfo.value.rate,
+    occupancy: h.occupancyRate,
+  }));
 });
 
 const chartLabels = computed(() => trendData.value.map((d) => d.label));
 const chartPrices = computed(() => trendData.value.map((d) => d.price));
 const chartOccupancy = computed(() => trendData.value.map((d) => d.occupancy));
 
-// --- MAP CENTER ---
 const mapCenter = computed(() => {
   if (selectedCity.value === "porto") return [41.1579, -8.6291];
   if (selectedCity.value === "lisbon") return [38.7223, -9.1393];
@@ -370,8 +362,7 @@ const mapCenter = computed(() => {
   return [41.1579, -8.6291];
 });
 
-// --- TOP NEIGHBORHOODS ---
-const topNeighborhoods = computed(() => {
+const topneighbourhoods = computed(() => {
   const data = rawListings.value;
   if (!data.length) return [];
   const stats = {};
@@ -409,15 +400,15 @@ const topNeighborhoods = computed(() => {
 </script>
 
 <style scoped>
+/* LAYOUT */
 .explore-container {
   width: 100%;
+  max-width: 1000px;
   padding: 2rem 1rem;
-  max-width: 810px;
   color: black;
 }
 
 /* HEADER */
-
 .header-section {
   display: flex;
   justify-content: space-between;
@@ -433,56 +424,61 @@ const topNeighborhoods = computed(() => {
 }
 
 .header-left h1 {
-  font-weight: 800;
   font-size: 2rem;
+  font-weight: 800;
   color: black;
 }
 
 .header-actions {
-  margin-top: 5px;
   display: flex;
   align-items: center;
   gap: 1rem;
+  margin-top: 5px;
 }
 
 .city-select {
-  background-color: transparent;
-  color: black;
-  border: none;
+  margin-top: 5px;
   padding: 10px 24px;
-  border-radius: 9999px;
   font-weight: 600;
+  color: black;
+  background-color: #fff;
+  border: none;
+  border-radius: 9999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   cursor: pointer;
-  text-align: center;
-  text-align-last: center;
-  outline: none;
-  font-size: 0.9rem;
+}
+
+.city-select:hover {
+  border-color: #ff5a5f;
+}
+
+.city-select:focus {
+  border-color: #ff5a5f;
+  box-shadow: 0 2px 12px rgba(255, 90, 95, 0.15);
 }
 
 .btn-primary {
   margin-top: 5px;
-  background-color: #ff5a5f;
-  color: white;
-  border: none;
   padding: 10px 24px;
-  border-radius: 9999px;
   font-weight: 600;
-  cursor: pointer;
+  color: white;
+  background-color: #ff5a5f;
+  border: none;
+  border-radius: 9999px;
   box-shadow: 0 4px 10px rgba(255, 90, 95, 0.2);
+  cursor: pointer;
 }
 
 /* CARDS */
-
 .card {
-  background: white;
-  border-radius: 16px;
   padding: 0.5rem 1rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  background: white;
   border: 1px solid rgba(0, 0, 0, 0.02);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
 
 /* KPI GRID */
-
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -508,22 +504,17 @@ const topNeighborhoods = computed(() => {
   color: dimgrey;
 }
 
-.trend-positive {
-  color: #10b981;
-}
-
-.trend-negative {
-  color: #ff5a5f;
+.star-color {
+  color: gold;
 }
 
 /* PROGRESS BAR */
-
 .progress-bar {
-  margin-top: 5px;
   height: 8px;
+  margin-top: 5px;
+  overflow: hidden;
   background-color: rgb(234, 234, 234);
   border-radius: 9999px;
-  overflow: hidden;
 }
 
 .progress-fill {
@@ -533,17 +524,12 @@ const topNeighborhoods = computed(() => {
   transition: width 0.5s ease-out;
 }
 
-.star-color {
-  color: gold;
-}
-
 /* MAP SECTION */
-
 .heatmap-section {
-  margin-bottom: 2rem;
-  height: 500px;
   display: flex;
   flex-direction: column;
+  height: 500px;
+  margin-bottom: 2rem;
 }
 
 .card-header {
@@ -553,57 +539,54 @@ const topNeighborhoods = computed(() => {
   margin-bottom: 1rem;
 }
 
-/* --- TOGGLE SWITCH COM GLIDER --- */
 .toggle-switch {
-  position: relative; /* Necessário para o glider absoluto */
+  position: relative;
+  display: flex;
+  padding: 4px;
   background: rgb(234, 234, 234);
   border-radius: 20px;
-  padding: 4px;
-  display: flex;
-  isolation: isolate; /* Cria novo contexto de empilhamento */
+  isolation: isolate;
 }
 
 .toggle-glider {
   position: absolute;
-  top: 4px; /* Igual ao padding do pai */
+  top: 4px;
   left: 0;
-  background-color: #ff5a5f; /* Cor Vermelha */
-  border-radius: 16px; /* Igual ao botão */
-  z-index: 1; /* Fica atrás do texto */
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* A animação de deslize */
-  /* Largura e altura são definidas via JS */
+  z-index: 1;
+  background-color: #ff5a5f;
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .toggle-switch button {
   position: relative;
-  z-index: 2; /* Texto fica por cima do glider */
-  border: none;
-  background: transparent; /* Transparente para ver o glider por trás */
+  z-index: 2;
   padding: 6px 16px;
-  border-radius: 16px;
-  cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;
   color: black;
-  transition: color 0.3s ease; /* Transição suave da cor do texto */
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: color 0.3s ease;
 }
 
 .toggle-switch button.active {
-  color: white; /* Texto fica branco quando o glider está por baixo */
+  color: white;
   background: transparent;
   box-shadow: none;
 }
 
 .map-placeholder {
-  background-color: lightgrey;
-  flex: 1;
-  border-radius: 12px;
   position: relative;
+  flex: 1;
   overflow: hidden;
+  background-color: lightgrey;
+  border-radius: 12px;
 }
 
 /* CHARTS GRID */
-
 .charts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -612,33 +595,21 @@ const topNeighborhoods = computed(() => {
 }
 
 .chart-card {
-  min-height: 300px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  min-height: 300px;
 }
 
 .chart-placeholder {
-  flex: 1;
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   align-items: center;
+  flex: 1;
   width: 100%;
   height: 100%;
-  position: relative;
-}
-
-.simple-chart {
-  width: 100%;
-  height: 80px;
-  opacity: 0.8;
-}
-
-/* TOP NEIGHBORHOODS */
-
-.full-width-card {
-  margin-bottom: 2rem;
 }
 
 .circles-container {
@@ -646,43 +617,41 @@ const topNeighborhoods = computed(() => {
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 1.5rem;
   margin-top: 1.5rem;
+  margin-bottom: 4rem;
   text-align: center;
 }
 
 .circle-item {
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
   align-items: center;
   gap: 0.5rem;
   height: 100%;
-  justify-content: flex-start;
 }
 
-/* --- FIXED: NAME ALIGNMENT --- */
 .circle-item h4 {
-  margin: 0;
-  font-size: 0.85rem;
-  color: black;
-  font-weight: 600;
-  white-space: normal;
-  text-align: center;
-
-  /* Force height for ~3 lines of text to align balls below */
-  min-height: 6rem;
-  display: flex;
-  align-items: center; /* Center text vertically in the fixed space */
-  justify-content: center;
-}
-
-.circle {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  border: 4px solid black;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 6rem;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: black;
+  text-align: center;
+  white-space: normal;
+}
+
+.circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
   background: white;
+  border: 4px solid black;
+  border-radius: 50%;
 }
 
 .circle-value {
@@ -693,39 +662,38 @@ const topNeighborhoods = computed(() => {
 
 .circle-price {
   font-size: 0.9rem;
-  color: #ff5a5f;
   font-weight: 700;
+  color: #ff5a5f;
 }
 
 /* STATES */
-
 .loading-text {
-  text-align: center;
-  color: grey;
   padding: 2rem;
+  color: grey;
+  text-align: center;
 }
 
 .loading-card {
-  background: white;
+  grid-column: 1 / -1;
   padding: 2rem;
+  background: white;
   border-radius: 16px;
   text-align: center;
-  grid-column: 1 / -1;
 }
 
 .error-card {
-  background: white;
+  grid-column: 1 / -1;
   padding: 2rem;
+  color: red;
+  background: white;
+  border-left: 4px solid red;
   border-radius: 16px;
   text-align: center;
-  grid-column: 1 / -1;
-  border-left: 4px solid red;
-  color: red;
 }
 
 .no-data {
-  color: grey;
-  font-size: 0.9rem;
   margin-bottom: 2rem;
+  font-size: 0.9rem;
+  color: grey;
 }
 </style>

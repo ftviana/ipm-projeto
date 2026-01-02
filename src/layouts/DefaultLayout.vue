@@ -1,111 +1,3 @@
-<script setup>
-import { RouterLink, RouterView } from "vue-router";
-import { ref, watch, onMounted, onUnmounted } from "vue"; // Added lifecycle hooks
-import { useRoute } from "vue-router";
-import { store } from "../store.js";
-import AppToast from "../components/AppToast.vue";
-
-const navCenter = ref(null);
-const glider = ref(null);
-const route = useRoute();
-const isGliderVisible = ref(false);
-
-// --- SETTINGS LOGIC ---
-const isSettingsOpen = ref(false);
-const localCurrency = ref(store.state.currency);
-const showToast = ref(false);
-const settingsContainer = ref(null); // Ref for click-outside detection
-
-function toggleSettings() {
-  if (!isSettingsOpen.value) {
-    localCurrency.value = store.state.currency;
-  }
-  isSettingsOpen.value = !isSettingsOpen.value;
-}
-
-// Close if clicking outside the container
-function handleClickOutside(event) {
-  if (
-    settingsContainer.value &&
-    !settingsContainer.value.contains(event.target)
-  ) {
-    isSettingsOpen.value = false;
-  }
-}
-
-function saveChanges() {
-  store.saveCurrency(localCurrency.value);
-  isSettingsOpen.value = false;
-  triggerToast();
-}
-
-function resetToDefaults() {
-  localCurrency.value = "EUR";
-  store.saveCurrency("EUR");
-  triggerToast();
-}
-
-function triggerToast() {
-  showToast.value = true;
-  setTimeout(() => {
-    showToast.value = false;
-  }, 3000);
-}
-
-// --- GLIDER LOGIC ---
-const updateGlider = () => {
-  if (!navCenter.value || !glider.value) return;
-  const activeLink = navCenter.value.querySelector(
-    "a.router-link-exact-active"
-  );
-
-  if (activeLink) {
-    if (isGliderVisible.value) {
-      glider.value.style.transition = "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
-    } else {
-      glider.value.style.transition = "none";
-    }
-    glider.value.style.opacity = "1";
-    isGliderVisible.value = true;
-
-    const space = 4;
-    const navStyle = getComputedStyle(navCenter.value);
-    const paddingTop = parseFloat(navStyle.paddingTop) || 0;
-
-    const offsetLeft = activeLink.offsetLeft;
-    const offsetWidth = activeLink.offsetWidth;
-    const offsetHeight = activeLink.offsetHeight;
-
-    glider.value.style.width = `${offsetWidth - space * 2}px`;
-    glider.value.style.height = `${offsetHeight - space * 2}px`;
-    glider.value.style.top = `${paddingTop + space}px`;
-    glider.value.style.transform = `translateX(${offsetLeft + space}px)`;
-  } else {
-    glider.value.style.transition = "none";
-    glider.value.style.width = "0px";
-    glider.value.style.opacity = "0";
-    isGliderVisible.value = false;
-  }
-};
-
-// --- LIFECYCLE ---
-watch(
-  () => route.path,
-  () => {
-    setTimeout(updateGlider, 0);
-  },
-  { flush: "post", immediate: true }
-);
-
-onMounted(() => {
-  document.addEventListener("click", handleClickOutside);
-});
-
-onUnmounted(() => {
-  document.removeEventListener("click", handleClickOutside);
-});
-</script>
-
 <template>
   <div class="app-layout">
     <header>
@@ -315,17 +207,121 @@ onUnmounted(() => {
   </div>
 </template>
 
+<script setup>
+import { RouterLink, RouterView } from "vue-router";
+import { ref, watch, onMounted, onUnmounted } from "vue";
+import { useRoute } from "vue-router";
+import { store } from "../store.js";
+import AppToast from "../components/AppToast.vue";
+
+const navCenter = ref(null);
+const glider = ref(null);
+const route = useRoute();
+const isGliderVisible = ref(false);
+
+const isSettingsOpen = ref(false);
+const localCurrency = ref(store.state.currency);
+const showToast = ref(false);
+const settingsContainer = ref(null);
+
+function toggleSettings() {
+  if (!isSettingsOpen.value) {
+    localCurrency.value = store.state.currency;
+  }
+  isSettingsOpen.value = !isSettingsOpen.value;
+}
+
+function handleClickOutside(event) {
+  if (
+    settingsContainer.value &&
+    !settingsContainer.value.contains(event.target)
+  ) {
+    isSettingsOpen.value = false;
+  }
+}
+
+function saveChanges() {
+  store.saveCurrency(localCurrency.value);
+  isSettingsOpen.value = false;
+  triggerToast();
+}
+
+function resetToDefaults() {
+  localCurrency.value = "EUR";
+  store.saveCurrency("EUR");
+  triggerToast();
+}
+
+function triggerToast() {
+  showToast.value = true;
+  setTimeout(() => {
+    showToast.value = false;
+  }, 3000);
+}
+
+const updateGlider = () => {
+  if (!navCenter.value || !glider.value) return;
+  const activeLink = navCenter.value.querySelector(
+    "a.router-link-exact-active"
+  );
+
+  if (activeLink) {
+    if (isGliderVisible.value) {
+      glider.value.style.transition = "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+    } else {
+      glider.value.style.transition = "none";
+    }
+    glider.value.style.opacity = "1";
+    isGliderVisible.value = true;
+
+    const space = 4;
+    const navStyle = getComputedStyle(navCenter.value);
+    const paddingTop = parseFloat(navStyle.paddingTop) || 0;
+
+    const offsetLeft = activeLink.offsetLeft;
+    const offsetWidth = activeLink.offsetWidth;
+    const offsetHeight = activeLink.offsetHeight;
+
+    glider.value.style.width = `${offsetWidth - space * 2}px`;
+    glider.value.style.height = `${offsetHeight - space * 2}px`;
+    glider.value.style.top = `${paddingTop + space}px`;
+    glider.value.style.transform = `translateX(${offsetLeft + space}px)`;
+  } else {
+    glider.value.style.transition = "none";
+    glider.value.style.width = "0px";
+    glider.value.style.opacity = "0";
+    isGliderVisible.value = false;
+  }
+};
+
+watch(
+  () => route.path,
+  () => {
+    setTimeout(updateGlider, 0);
+  },
+  { flush: "post", immediate: true }
+);
+
+onMounted(() => {
+  document.addEventListener("click", handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("click", handleClickOutside);
+});
+</script>
+
 <style scoped>
+/* LAYOUT */
 .app-layout {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 }
 
-header,
-footer {
-  background-color: linen;
+header {
   padding: 1rem;
+  background-color: linen;
   border-bottom: 1px solid linen;
 }
 
@@ -335,26 +331,23 @@ main {
   justify-content: center;
 }
 
-footer {
-  border-top: 1px solid linen;
-}
-
+/* NAVIGATION */
 nav {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: relative;
 }
 
 .nav-left .logo {
   display: flex;
   align-items: center;
-  font-weight: bold;
-  font-size: 1.5rem;
-  text-decoration: none;
-  color: black;
   gap: 0.75rem;
   margin-left: 1rem;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: black;
+  text-decoration: none;
 }
 
 .logo svg {
@@ -368,37 +361,29 @@ nav {
   left: 50%;
   transform: translateX(-50%);
   display: flex;
+  overflow: hidden;
   background-color: white;
   border-radius: 40px;
-  overflow: hidden;
-}
-
-.glider {
-  position: absolute;
-  background-color: #ff5a5f;
-  border-radius: 40px;
-  z-index: 1;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .nav-center a {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  white-space: nowrap;
-  position: relative;
-  z-index: 2;
   padding: 0.9rem 1.5rem;
-  text-decoration: none;
+  white-space: nowrap;
   color: grey;
+  text-decoration: none;
   transition: color 0.3s ease;
 }
 
 .nav-center a svg {
-  fill: currentColor;
   width: 20px;
   height: 20px;
+  fill: currentColor;
 }
 
 .nav-center a.router-link-exact-active {
@@ -409,6 +394,14 @@ nav {
   color: black;
 }
 
+.glider {
+  position: absolute;
+  z-index: 1;
+  background-color: #ff5a5f;
+  border-radius: 40px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .nav-right {
   position: relative;
   display: flex;
@@ -416,14 +409,15 @@ nav {
   margin-right: 1rem;
 }
 
+/* SETTINGS BUTTON */
 .settings-button {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0.5rem;
-  border-radius: 50%;
-  border: none;
   background-color: lightgrey;
+  border: none;
+  border-radius: 50%;
   cursor: pointer;
   transition: background-color 0.2s;
 }
@@ -432,27 +426,28 @@ nav {
   background-color: #d1d5db;
 }
 
+/* SETTINGS DROPDOWN */
 .settings-dropdown {
   position: absolute;
   top: 120%;
   right: 0;
-  background-color: white;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  padding: 1rem;
-  width: 140px;
   z-index: 1000;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  width: 140px;
+  padding: 1rem;
+  background-color: white;
   border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
 .dropdown-title {
-  font-size: 0.8rem;
-  color: grey;
   margin: 0;
+  font-size: 0.8rem;
   font-weight: 600;
+  color: grey;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -466,21 +461,21 @@ nav {
 .currency-row button {
   width: 100%;
   padding: 0.5rem;
+  padding-left: 12px;
   font-size: 0.85rem;
   font-weight: 600;
-  border-radius: 8px;
-  border: 1px solid lightgrey;
-  background: white;
   color: black;
+  text-align: left;
+  background: white;
+  border: 1px solid lightgrey;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
-  text-align: left;
-  padding-left: 12px;
 }
 
 .currency-row button.active {
-  background-color: #ff5a5f;
   color: white;
+  background-color: #ff5a5f;
   border-color: #ff5a5f;
 }
 
@@ -492,9 +487,8 @@ nav {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  margin-top: 0;
-  border-top: 1px solid lightgrey;
   padding-top: 1rem;
+  border-top: 1px solid lightgrey;
 }
 
 .actions-row button {
@@ -508,8 +502,8 @@ nav {
 }
 
 .btn-save {
-  background-color: #ff5a5f;
   color: white;
+  background-color: #ff5a5f;
   border: none;
 }
 
@@ -518,8 +512,8 @@ nav {
 }
 
 .btn-reset {
-  background-color: white;
   color: #ff5a5f;
+  background-color: white;
   border: 1px solid #ff5a5f;
 }
 
@@ -527,20 +521,20 @@ nav {
   background-color: #fff0f0;
 }
 
+/* TOAST */
 .nav-toast {
   position: absolute;
-  right: 100%;
-  margin-right: 12px;
   top: 50%;
-  transform: translateY(-50%);
+  right: 0;
   z-index: 100;
+  transform: translateY(-50%);
   white-space: nowrap;
 }
 
+/* TRANSITIONS */
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-  transform: translateY(-50%);
 }
 
 .fade-enter-active,

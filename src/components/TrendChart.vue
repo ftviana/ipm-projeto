@@ -43,8 +43,8 @@ const chartData = computed(() => ({
       backgroundColor: props.color,
       borderColor: props.color,
       data: props.values,
-      tension: 0.4, 
-      pointRadius: 0, 
+      tension: 0.4,
+      pointRadius: 0,
     },
   ],
 }));
@@ -58,14 +58,14 @@ const chartOptions = {
   },
   scales: {
     x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-    y: { display: false }, 
+    y: { display: false },
   },
 };
 </script>
 
 <style scoped>
 .chart-container {
-  height: 100%;
   width: 100%;
+  height: 100%;
 }
 </style>

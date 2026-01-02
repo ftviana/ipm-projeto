@@ -150,15 +150,16 @@ const currencySymbol = computed(() => currentCurrencyInfo.value.symbol);
 
 const fetchAllCities = async () => {
   isLoading.value = true;
+  const periodKey = store.state.period.replace("-", "_");
   try {
     const [resPorto, resLisbon, resBcn] = await Promise.all([
-      fetch("http://localhost:3000/porto_listings").then((r) =>
+      fetch(`http://localhost:3000/porto_${periodKey}_listings`).then((r) =>
         r.ok ? r.json() : []
       ),
-      fetch("http://localhost:3000/lisbon_listings").then((r) =>
+      fetch(`http://localhost:3000/lisbon_${periodKey}_listings`).then((r) =>
         r.ok ? r.json() : []
       ),
-      fetch("http://localhost:3000/barcelona_listings").then((r) =>
+      fetch(`http://localhost:3000/barcelona_${periodKey}_listings`).then((r) =>
         r.ok ? r.json() : []
       ),
     ]);
@@ -212,6 +213,7 @@ onMounted(fetchAllCities);
 </script>
 
 <style scoped>
+/* LAYOUT */
 .home-content {
   width: 100%;
   max-width: 1000px;
@@ -219,12 +221,14 @@ onMounted(fetchAllCities);
   margin: 0 auto;
 }
 
+/* LOADING */
 .loading-state {
-  text-align: center;
   padding: 2rem;
   color: grey;
+  text-align: center;
 }
 
+/* STATS BOXES */
 .stats-boxes {
   display: flex;
   gap: 3rem;
@@ -233,21 +237,21 @@ onMounted(fetchAllCities);
 
 .box {
   flex: 1;
-  background-color: white;
-  padding: 1rem;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px -5px rgba(150, 150, 150, 0.08);
-  border: 1px solid rgba(0, 0, 0, 0.02);
   display: flex;
   flex-direction: column;
   justify-content: center;
+  padding: 1rem;
+  background-color: white;
+  border: 1px solid rgba(0, 0, 0, 0.02);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px -5px rgba(150, 150, 150, 0.08);
 }
 
 .box h3 {
+  margin: 0 0 0.25rem 0;
   font-size: 0.8rem;
   font-weight: 400;
   color: dimgrey;
-  margin: 0 0 0.25rem 0;
 }
 
 .value-row {
@@ -257,13 +261,17 @@ onMounted(fetchAllCities);
 }
 
 .box .value {
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: black;
-  margin: 0;
   display: flex;
   align-items: center;
   gap: 6px;
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: black;
+}
+
+.star-color {
+  color: gold;
 }
 
 /* CTA GRID */
@@ -275,16 +283,13 @@ onMounted(fetchAllCities);
 }
 
 .cta-box {
-  /* REDUZIDO O PADDING VERTICAL DE 3.5rem PARA 1.5rem */
-  padding: 1.5rem;
-  border-radius: 32px;
-  color: white;
   display: flex;
   flex-direction: column;
-  /* MANTÉM O ESPAÇAMENTO ENTRE O TOPO (TEXTO) E O FUNDO (BOTÃO) */
   justify-content: space-between;
-  /* ALTURA MÍNIMA PARA GARANTIR ESPAÇO PARA O BOTÃO NÃO FICAR COLADO */
   min-height: 230px;
+  padding: 1.5rem;
+  color: white;
+  border-radius: 32px;
 }
 
 .cta-red {
@@ -304,33 +309,33 @@ onMounted(fetchAllCities);
 }
 
 .text-content h2 {
+  margin: 0 0 0.5rem 0;
   font-size: 1.25rem;
   font-weight: 700;
-  margin: 0 0 0.5rem 0;
 }
 
 .text-content p {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.9);
   margin: 0;
+  font-size: 0.9rem;
   line-height: 1.5;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .cta-button {
-  border-radius: 24px;
-  padding: 0.6rem 1rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  font-weight: 700;
-  cursor: pointer;
   align-self: flex-start;
-  transition: transform 0.2s ease;
-  font-size: 0.9rem;
-  text-decoration: none;
-  background-color: white;
+  gap: 0.5rem;
   margin-top: 1.5rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  background-color: white;
+  border-radius: 24px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s ease;
 }
 
 .cta-button:hover {
@@ -341,10 +346,6 @@ onMounted(fetchAllCities);
   width: 16px;
   height: 16px;
   color: currentColor;
-}
-
-.cta-yellow .cta-button svg {
-  transform: scaleX(-1);
 }
 
 .cta-red .cta-button {
@@ -359,11 +360,11 @@ onMounted(fetchAllCities);
   color: #f5c544;
 }
 
-.cta-purple .cta-button {
-  color: #7b61ff;
+.cta-yellow .cta-button svg {
+  transform: scaleX(-1);
 }
 
-.star-color {
-  color: gold;
+.cta-purple .cta-button {
+  color: #7b61ff;
 }
 </style>

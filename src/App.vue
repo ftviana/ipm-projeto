@@ -5,7 +5,3 @@ import { RouterView } from "vue-router";
 <template>
   <RouterView />
 </template>
-
-<style scoped>
-/* Remove all the default styling */
-</style>

@@ -86,7 +86,6 @@ const points = computed(() => {
 
       if (props.mode === "Price") {
         const price = parseFloat(String(l.price).replace(/[$,]/g, ""));
-
         if (price < 90) {
           color = "#00A699";
         } else if (price >= 90 && price < 160) {
@@ -96,7 +95,6 @@ const points = computed(() => {
         }
       } else {
         const avail = parseInt(l.availability_365) || 0;
-
         if (avail > 180) {
           color = "#00A699";
         } else if (avail >= 60 && avail <= 180) {
@@ -114,15 +112,15 @@ const points = computed(() => {
 
 <style scoped>
 .map-wrapper {
-  height: 100%;
-  width: 100%;
-  min-height: 100%;
-  border-radius: 12px;
-  overflow: hidden;
-  z-index: 0;
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
   background-color: #f0f0f0;
+  border-radius: 12px;
 }
 </style>

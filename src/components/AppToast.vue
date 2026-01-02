@@ -23,27 +23,27 @@
 
 <style scoped>
 .toast-notification {
-  height: 52px;
-  border-radius: 40px;
-  background-color: #e0f2e9;
-  color: darkgreen;
-  padding: 0 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-weight: 600;
+  height: 52px;
+  padding: 0 1.5rem;
   font-size: 0.9rem;
+  font-weight: 600;
+  color: darkgreen;
+  background-color: #e0f2e9;
+  border-radius: 40px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .icon-circle {
-  background-color: green;
-  color: white;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: white;
+  background-color: green;
+  border-radius: 50%;
 }
 </style>
