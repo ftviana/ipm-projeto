@@ -69,13 +69,32 @@ The built files will be in the `dist/` folder.
 
 ## Tech Stack
 
-- **Vue 3** - Frontend framework
-- **Vite** - Build tool
-- **Vue Router** - Client-side routing
-- **Leaflet** - Interactive maps
-- **Chart.js** - Data visualization
-- **jsPDF** - PDF report generation
-- **JSON Server** - Mock REST API
+### Frontend
+
+- **Vue 3** (^3.5.22) - Frontend framework
+- **Vite** (^7.1.7) - Build tool
+- **Vue Router** (^4.6.3) - Client-side routing
+
+### Maps & Geospatial
+
+- **Leaflet** (^1.9.4) - Interactive maps
+- **@vue-leaflet/vue-leaflet** (^0.10.1) - Vue 3 Leaflet components
+- **leaflet.heat** (^0.2.0) - Heatmap layer for Leaflet
+- **@fawmi/vue-google-maps** (^0.9.79) - Google Maps integration
+
+### Data Visualization
+
+- **Chart.js** (^4.5.1) - Charts and graphs
+- **vue-chartjs** (^5.3.3) - Vue 3 wrapper for Chart.js
+
+### PDF Export
+
+- **jsPDF** (^2.5.1) - PDF generation
+- **jspdf-autotable** (^3.8.3) - Table plugin for jsPDF
+
+### Backend
+
+- **JSON Server** (^1.0.0-beta.3) - Mock REST API
 
 ## Project Structure
 
