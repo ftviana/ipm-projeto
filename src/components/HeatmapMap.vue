@@ -1,3 +1,15 @@
+<!-- 
+  Componente HeatmapMap - Mapa interativo com pontos coloridos.
+  
+  Exibe listings num mapa Leaflet com círculos coloridos baseados em:
+  - Modo "Price": Verde (<€90), Amarelo (€90-160), Vermelho (>€160)
+  - Modo "Occupancy": Verde (>180 dias), Amarelo (60-180), Vermelho (<60)
+  
+  Props:
+  - listings: Array de listings a exibir
+  - center: Coordenadas [lat, lng] do centro do mapa
+  - mode: "Price" ou "Occupancy" para determinar a coloração
+-->
 <template>
   <div class="map-wrapper">
     <l-map
@@ -49,12 +61,17 @@ const onMapReady = () => {
   leafletObject = mapRef.value?.leafletObject;
 };
 
+/*
+  Converte um valor de coordenada (string ou número) para float.
+  Trata o caso de strings com vírgula como separador decimal.
+*/
 const parseCoord = (val) => {
   if (typeof val === "number") return val;
   if (typeof val === "string") return parseFloat(val.replace(",", "."));
   return 0;
 };
 
+// Quando os listings mudam, centra o mapa no primeiro listing válido
 watch(
   () => props.listings,
   async (newListings) => {
@@ -71,6 +88,10 @@ watch(
   { deep: true }
 );
 
+/*
+  Computed que transforma os listings em pontos com coordenadas e cor.
+  Limita a 2000 pontos para performance. Filtra pontos com coordenadas inválidas.
+*/
 const points = computed(() => {
   if (!props.listings) return [];
 

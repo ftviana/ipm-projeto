@@ -1,3 +1,12 @@
+<!-- 
+  Vista Home - Página inicial da aplicação InsideView.
+  
+  Apresenta:
+  - Estatísticas globais agregadas de todas as cidades (Total Listings, Preço Médio, Ocupação, Rating)
+  - Grelha de CTAs para navegar para as funcionalidades principais
+  
+  Os dados são obtidos da API para todas as cidades e agregados para mostrar métricas globais.
+-->
 <template>
   <div class="home-content">
     <div v-if="isLoading" class="loading-state">
@@ -137,6 +146,7 @@ import { store } from "../store.js";
 const isLoading = ref(true);
 const combinedData = ref([]);
 
+// Taxas de conversão e símbolos para cada moeda suportada
 const conversionRates = {
   USD: { symbol: "$", rate: 1.0 },
   EUR: { symbol: "€", rate: 0.94 },
@@ -148,6 +158,10 @@ const currentCurrencyInfo = computed(
 );
 const currencySymbol = computed(() => currentCurrencyInfo.value.symbol);
 
+/*
+  Carrega os dados de todas as cidades (Porto, Lisboa, Barcelona) para o período selecionado.
+  Os dados são combinados num único array para calcular estatísticas globais.
+*/
 const fetchAllCities = async () => {
   isLoading.value = true;
   const periodKey = store.state.period.replace("-", "_");
@@ -171,6 +185,13 @@ const fetchAllCities = async () => {
   }
 };
 
+/*
+  Computed que calcula as estatísticas globais agregadas de todas as cidades:
+  - count: número total de listings
+  - price: preço médio por noite (convertido para a moeda selecionada)
+  - occupancy: taxa de ocupação média (%)
+  - rating: avaliação média (escala 0-5)
+*/
 const globalStats = computed(() => {
   const data = combinedData.value;
   if (!data.length) return { count: 0, price: 0, rating: 0, occupancy: 0 };

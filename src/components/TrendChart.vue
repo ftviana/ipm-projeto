@@ -1,3 +1,12 @@
+<!-- 
+  Componente TrendChart - Gráfico de linha para tendências.
+  
+  Props:
+  - labels: Array de labels para o eixo X
+  - values: Array de valores para o eixo Y
+  - color: Cor da linha (default: #FF5A5F)
+  - label: Legenda do dataset
+-->
 <template>
   <div class="chart-container">
     <Line :data="chartData" :options="chartOptions" />

@@ -1,3 +1,13 @@
+<!-- 
+  Vista Export - Exportação de dados filtrados para PDF.
+  
+  Funcionalidades:
+  - Filtros: cidade, período, bairro, tipo de propriedade
+  - Slider de intervalo de preço (dual thumb)
+  - Filtros de rating mínimo e número de hóspedes
+  - Pré-visualização dos dados filtrados (top 10)
+  - Geração de relatório PDF com jsPDF e autoTable
+-->
 <template>
   <div class="export-page">
     <div class="header-section">
@@ -219,11 +229,12 @@ const onPeriodChange = () => {
   loadData();
 };
 
+// Estado reativo dos filtros de exportação
 const filters = reactive({
   neighbourhood: "",
   propertyType: "",
   priceMin: 0,
-  priceMax: 510,
+  priceMax: 510, // 510 representa "500+"
   minRating: 1,
   minGuests: 1,
 });
@@ -238,6 +249,7 @@ const conversionRate = computed(() => {
   return rates[store.state.currency] || 1;
 });
 
+// Lista de bairros únicos extraída dos dados
 const neighbourhoods = computed(() => {
   const set = new Set(rawListings.value.map((i) => i.neighbourhood_cleansed));
   return Array.from(set).sort();
@@ -248,6 +260,10 @@ const propertyTypes = computed(() => {
   return Array.from(set).sort();
 });
 
+/*
+  Computed que filtra os listings com base em todos os filtros ativos:
+  preço, bairro, tipo de propriedade, rating mínimo e capacidade.
+*/
 const filteredListings = computed(() => {
   return rawListings.value.filter((item) => {
     const price = parseFloat(String(item.price).replace(/[$,]/g, "")) || 0;
@@ -279,8 +295,13 @@ const filteredListings = computed(() => {
   });
 });
 
+// Top 10 listings para pré-visualização na tabela
 const previewList = computed(() => filteredListings.value.slice(0, 10));
 
+/*
+  Carrega os dados da API para a cidade e período selecionados.
+  Reinicia os filtros de bairro e tipo ao carregar novos dados.
+*/
 const loadData = async () => {
   isLoading.value = true;
   let cityKey = selectedCity.value.toLowerCase();
@@ -307,6 +328,11 @@ const onCityChange = () => {
   loadData();
 };
 
+/*
+  Gera e descarrega um relatório PDF com os listings filtrados.
+  Utiliza jsPDF e autoTable para criar uma tabela formatada.
+  Inclui metadados: data de geração, filtros ativos e até 1000 listings.
+*/
 const exportPDF = () => {
   const doc = new jsPDF();
   doc.setFontSize(18);
@@ -381,6 +407,7 @@ onMounted(() => {
   loadData();
 });
 
+// Watchers para garantir que priceMin não ultrapassa priceMax e vice-versa
 watch(
   () => filters.priceMin,
   (val) => {

@@ -1,9 +1,26 @@
+"""
+Script para construir a base de dados JSON a partir dos ficheiros CSV.
+
+Este script processa os dados de listings de diferentes cidades (Porto, Lisboa, Barcelona)
+e períodos temporais, gerando um ficheiro db.json para ser utilizado pelo json-server.
+
+Funcionalidades:
+- Lê ficheiros CSV de cada cidade/período
+- Extrai apenas as colunas relevantes (id, name, price, ratings, coordenadas, etc.)
+- Calcula métricas históricas agregadas por cidade (count, avgPrice, occupancyRate, avgRating)
+- Gera endpoints para a API: /{cidade}_{periodo}_listings e /{cidade}_history
+
+Uso: python build_jsondb.py <pasta_db>
+Exemplo: python build_jsondb.py db
+"""
+
 import sys
 import json
 import pandas as pd
 import numpy as np
 from pathlib import Path
 
+# Colunas a manter dos ficheiros CSV originais
 KEEP_COLUMNS = [
     'id', 
     'name', 
@@ -21,6 +38,7 @@ KEEP_COLUMNS = [
     'host_name'
 ]
 
+# Cidades e períodos suportados pela aplicação
 CITIES = ['porto', 'lisbon', 'barcelona']
 PERIODS = ['2025-03', '2025-06', '2025-09']
 PERIOD_LABELS = {
@@ -30,6 +48,10 @@ PERIOD_LABELS = {
 }
 
 def clean_price(value):
+    """
+    Limpa e converte um valor de preço para float.
+    Remove símbolos de moeda ($) e vírgulas de formatação.
+    """
     if pd.isna(value): return 0
     if isinstance(value, (int, float)): return value
     clean = str(value).replace('$', '').replace(',', '')
@@ -39,6 +61,12 @@ def clean_price(value):
         return 0
 
 def load_csv_optimized(path):
+    """
+    Carrega um ficheiro CSV de forma otimizada, mantendo apenas as colunas relevantes.
+    Aplica limpeza de dados: conversão de preços, preenchimento de valores nulos.
+    
+    Retorna um DataFrame pandas ou DataFrame vazio em caso de erro.
+    """
     try:
         df_head = pd.read_csv(path, nrows=0)
         existing_cols = [c for c in KEEP_COLUMNS if c in df_head.columns]
@@ -59,6 +87,14 @@ def load_csv_optimized(path):
         return pd.DataFrame()
 
 def compute_metrics(df):
+    """
+    Calcula métricas agregadas para um conjunto de listings:
+    - count: número total de listings
+    - avgPrice: preço médio por noite
+    - occupancyRate: taxa de ocupação média (%)
+    - avgRating: avaliação média
+    - reviewsCount: número total de reviews
+    """
     if df.empty:
         return None
     
@@ -86,6 +122,14 @@ def compute_metrics(df):
     }
 
 def build_historical_data(base_dir):
+    """
+    Constrói a estrutura de dados completa para a API.
+    Processa cada cidade e período, gerando:
+    - Endpoints de listings: {cidade}_{periodo}_listings
+    - Endpoints de histórico: {cidade}_history
+    
+    Retorna um dicionário pronto para ser serializado como JSON.
+    """
     data = {}
     base_dir = Path(base_dir).resolve()
     
@@ -126,6 +170,10 @@ def build_historical_data(base_dir):
     return data
 
 def main():
+    """
+    Ponto de entrada do script.
+    Recebe o caminho da pasta com os CSVs como argumento e gera o ficheiro db.json.
+    """
     if len(sys.argv) < 2:
         print("Usage: python build_jsondb.py <db_folder>")
         print("Example: python build_jsondb.py db")

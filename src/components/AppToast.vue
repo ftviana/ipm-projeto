@@ -1,3 +1,7 @@
+<!-- 
+  Componente AppToast - Notificação de sucesso.
+  Exibe uma mensagem toast com ícone de sucesso para confirmar ações do utilizador.
+-->
 <template>
   <div class="toast-notification">
     <div class="icon-circle">

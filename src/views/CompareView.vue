@@ -1,8 +1,17 @@
+<!-- 
+  Vista Compare - Comparação entre duas cidades ou períodos.
+  
+  Funcionalidades:
+  - Seleção de duas cidades (A e B) com períodos independentes
+  - Comparação de métricas: preço médio, ocupação, listings, rating
+  - Gráfico comparativo (barra ou linha)
+  - Banner de insight automático sobre diferenças de preço
+-->
 <template>
   <div class="compare-container">
     <div class="header-section">
       <div class="header-left">
-        <h1>Cities</h1>
+        <h1>Compare</h1>
       </div>
     </div>
 
@@ -43,103 +52,103 @@
         {{ isLoading ? "Loading..." : "Compare" }}
       </button>
     </div>
+
+    <div v-if="hasData" class="comparison-content">
+      <div class="insight-banner">
+        <h3>{{ insightText }}</h3>
+      </div>
+
+      <div class="stats-grid">
+        <div class="city-card card-a">
+          <div class="card-header-a">
+            <h2>{{ displayNameA }}</h2>
+            <span v-if="!isSameCity" class="period-label">{{
+              getPeriodLabel(comparedPeriodA)
+            }}</span>
+          </div>
+          <div class="card-body">
+            <div class="stat-row">
+              <span>Avg. Price</span>
+              <strong>{{ currencySymbol }}{{ statsA.price }}</strong>
+            </div>
+            <div class="stat-row">
+              <span>Occupancy</span>
+              <strong>{{ statsA.occupancy }}%</strong>
+            </div>
+            <div class="stat-row">
+              <span>Listings</span>
+              <strong>{{ statsA.count }}</strong>
+            </div>
+            <div class="stat-row">
+              <span>Rating</span>
+              <strong>{{ statsA.rating }} ★</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="city-card card-b">
+          <div class="card-header-b">
+            <h2>{{ displayNameB }}</h2>
+            <span v-if="!isSameCity" class="period-label">{{
+              getPeriodLabel(comparedPeriodB)
+            }}</span>
+          </div>
+          <div class="card-body">
+            <div class="stat-row">
+              <span>Avg. Price</span>
+              <strong>{{ currencySymbol }}{{ statsB.price }}</strong>
+            </div>
+            <div class="stat-row">
+              <span>Occupancy</span>
+              <strong>{{ statsB.occupancy }}%</strong>
+            </div>
+            <div class="stat-row">
+              <span>Listings</span>
+              <strong>{{ statsB.count }}</strong>
+            </div>
+            <div class="stat-row">
+              <span>Rating</span>
+              <strong>{{ statsB.rating }} ★</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-section card">
+        <div class="chart-header">
+          <h3>
+            Trend Comparison: {{ formatCityName(cityA) }} vs.
+            {{ formatCityName(cityB) }}
+          </h3>
+          <div class="chart-controls">
+            <button
+              :class="{ active: chartType === 'bar' }"
+              @click="chartType = 'bar'"
+            >
+              Bar
+            </button>
+            <button
+              :class="{ active: chartType === 'line' }"
+              @click="chartType = 'line'"
+            >
+              Line
+            </button>
+          </div>
+        </div>
+
+        <div class="chart-wrapper">
+          <Bar
+            v-if="chartType === 'bar'"
+            :data="chartData"
+            :options="chartOptions"
+          />
+          <Line v-else :data="chartData" :options="chartOptions" />
+        </div>
+      </div>
+    </div>
+
+    <div v-else-if="!isLoading" class="empty-state"></div>
   </div>
-
-  <div v-if="hasData" class="comparison-content">
-    <div class="insight-banner">
-      <h3>{{ insightText }}</h3>
-    </div>
-
-    <div class="stats-grid">
-      <div class="city-card card-a">
-        <div class="card-header-a">
-          <h2>{{ displayNameA }}</h2>
-          <span v-if="!isSameCity" class="period-label">{{
-            getPeriodLabel(comparedPeriodA)
-          }}</span>
-        </div>
-        <div class="card-body">
-          <div class="stat-row">
-            <span>Avg. Price</span>
-            <strong>{{ currencySymbol }}{{ statsA.price }}</strong>
-          </div>
-          <div class="stat-row">
-            <span>Occupancy</span>
-            <strong>{{ statsA.occupancy }}%</strong>
-          </div>
-          <div class="stat-row">
-            <span>Listings</span>
-            <strong>{{ statsA.count }}</strong>
-          </div>
-          <div class="stat-row">
-            <span>Rating</span>
-            <strong>{{ statsA.rating }} ★</strong>
-          </div>
-        </div>
-      </div>
-
-      <div class="city-card card-b">
-        <div class="card-header-b">
-          <h2>{{ displayNameB }}</h2>
-          <span v-if="!isSameCity" class="period-label">{{
-            getPeriodLabel(comparedPeriodB)
-          }}</span>
-        </div>
-        <div class="card-body">
-          <div class="stat-row">
-            <span>Avg. Price</span>
-            <strong>{{ currencySymbol }}{{ statsB.price }}</strong>
-          </div>
-          <div class="stat-row">
-            <span>Occupancy</span>
-            <strong>{{ statsB.occupancy }}%</strong>
-          </div>
-          <div class="stat-row">
-            <span>Listings</span>
-            <strong>{{ statsB.count }}</strong>
-          </div>
-          <div class="stat-row">
-            <span>Rating</span>
-            <strong>{{ statsB.rating }} ★</strong>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="chart-section card">
-      <div class="chart-header">
-        <h3>
-          Trend Comparison: {{ formatCityName(cityA) }} vs.
-          {{ formatCityName(cityB) }}
-        </h3>
-        <div class="chart-controls">
-          <button
-            :class="{ active: chartType === 'bar' }"
-            @click="chartType = 'bar'"
-          >
-            Bar
-          </button>
-          <button
-            :class="{ active: chartType === 'line' }"
-            @click="chartType = 'line'"
-          >
-            Line
-          </button>
-        </div>
-      </div>
-
-      <div class="chart-wrapper">
-        <Bar
-          v-if="chartType === 'bar'"
-          :data="chartData"
-          :options="chartOptions"
-        />
-        <Line v-else :data="chartData" :options="chartOptions" />
-      </div>
-    </div>
-  </div>
-
-  <div v-else-if="!isLoading" class="empty-state"></div>
 </template>
 
 <script setup>
@@ -169,6 +178,7 @@ ChartJS.register(
   Legend
 );
 
+// Estado dos seletores (antes de aplicar)
 const cityA = ref("porto");
 const cityB = ref("lisbon");
 const periodA = ref(store.state.period);
@@ -177,11 +187,13 @@ const isLoading = ref(false);
 const hasData = ref(false);
 const chartType = ref("bar");
 
+// Valores aplicados (após clicar em Compare)
 const comparedCityA = ref("");
 const comparedCityB = ref("");
 const comparedPeriodA = ref("");
 const comparedPeriodB = ref("");
 
+// Estatísticas calculadas para cada cidade
 const statsA = reactive({ price: 0, occupancy: 0, count: 0, rating: 0 });
 const statsB = reactive({ price: 0, occupancy: 0, count: 0, rating: 0 });
 
@@ -213,11 +225,13 @@ const getShortPeriod = (period) => {
   return p ? p.label.replace(" 2025", "") : period;
 };
 
+// Verifica se estamos a comparar a mesma cidade em períodos diferentes
 const isSameCity = computed(
   () =>
     comparedCityA.value === comparedCityB.value && comparedCityA.value !== ""
 );
 
+// Nome a exibir para cidade A (inclui período se mesma cidade)
 const displayNameA = computed(() => {
   if (!comparedCityA.value) return "";
   if (isSameCity.value) {
@@ -238,8 +252,18 @@ const displayNameB = computed(() => {
   return formatCityName(comparedCityB.value);
 });
 
+/*
+  Limpa e converte um valor de preço para número.
+*/
 const cleanPrice = (val) => parseFloat(String(val).replace(/[$,]/g, "")) || 0;
 
+/*
+  Calcula estatísticas agregadas para uma cidade:
+  - count: número de listings
+  - price: preço médio (convertido para a moeda selecionada)
+  - occupancy: taxa de ocupação média
+  - rating: avaliação média (normalizada para escala 0-5)
+*/
 const calculateCityStats = (data) => {
   let count = 0,
     totalPrice = 0,
@@ -271,6 +295,10 @@ const calculateCityStats = (data) => {
   };
 };
 
+/*
+  Carrega os dados de ambas as cidades selecionadas e calcula as estatísticas.
+  Valida que não sejam selecionadas cidade e período iguais.
+*/
 const fetchComparisonData = async () => {
   if (cityA.value === cityB.value && periodA.value === periodB.value)
     return alert("Please select different cities or periods to compare.");
@@ -306,6 +334,7 @@ const fetchComparisonData = async () => {
   }
 };
 
+// Texto de insight automático que compara preços entre as duas cidades
 const insightText = computed(() => {
   if (!hasData.value) return "";
   const diff = statsA.price - statsB.price;
@@ -317,6 +346,7 @@ const insightText = computed(() => {
   return "Both have similar average prices.";
 });
 
+// Dados formatados para o gráfico comparativo (Chart.js)
 const chartData = computed(() => ({
   labels: ["Avg. Price", "Occupancy Rate", "Rating"],
   datasets: [

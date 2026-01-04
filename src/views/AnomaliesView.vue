@@ -1,3 +1,16 @@
+<!-- 
+  Vista Anomalies - Deteção e análise de anomalias nos dados.
+  
+  Tipos de anomalias detetadas:
+  - Multi-hosts: hosts com mais de 10 propriedades
+  - High Occupancy: listings com mais de 300 dias ocupados
+  - Low Rating: listings com avaliação inferior a 3 estrelas
+  - Low Occupancy: listings com menos de 60 dias ocupados
+  - Price Spikes: preços 4x acima da média
+  - Zero Price: listings com preço zero ou inválido
+  
+  Funcionalidades: filtros por cidade/período/bairro, tabela paginada, exportação PDF por linha.
+-->
 <template>
   <div class="anomalies-page">
     <div class="header-section">
@@ -324,20 +337,26 @@ import { store } from "../store.js";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+// Estado dos filtros (antes e depois de aplicar)
 const selectedCity = ref("porto");
 const selectedPeriod = ref("2025-09");
 const selectedneighbourhood = ref("");
 const appliedCity = ref("porto");
 const appliedPeriod = ref("2025-09");
 const appliedneighbourhood = ref("");
+
+// Dados e estado da UI
 const rawListings = shallowRef([]);
-const previewListings = shallowRef([]);
+const previewListings = shallowRef([]); // Para popular o dropdown de bairros
 const isLoading = ref(false);
-const activeAnomaly = ref("multiHost");
-const hasApplied = ref(false);
+const activeAnomaly = ref("multiHost"); // Categoria de anomalia selecionada
+const hasApplied = ref(false); // Se os filtros já foram aplicados
 const currentPage = ref(1);
 const itemsPerPage = 10;
 
+/*
+  Carrega os bairros disponíveis para o dropdown antes de aplicar filtros.
+*/
 const loadNeighbourhoods = async () => {
   let cityKey = selectedCity.value.toLowerCase();
   if (cityKey === "lisboa") cityKey = "lisbon";
@@ -354,6 +373,9 @@ const loadNeighbourhoods = async () => {
   }
 };
 
+/*
+  Aplica os filtros selecionados e carrega os dados para análise de anomalias.
+*/
 const applyFilters = () => {
   appliedCity.value = selectedCity.value;
   appliedPeriod.value = selectedPeriod.value;
@@ -381,12 +403,18 @@ const neighbourhoods = computed(() => {
   return Array.from(set).sort();
 });
 
+/*
+  Formata um valor de preço para a moeda selecionada.
+*/
 const formatPrice = (val) => {
   const num = parseFloat(String(val).replace(/[$,]/g, "")) || 0;
   const converted = Math.round(num * conversionRate.value);
   return `${currencySymbol.value}${converted}`;
 };
 
+/*
+  Carrega os dados da API para os filtros aplicados.
+*/
 const loadData = async () => {
   isLoading.value = true;
   let cityKey = appliedCity.value.toLowerCase();
@@ -407,6 +435,9 @@ const loadData = async () => {
   }
 };
 
+/*
+  Reinicia todos os filtros para os valores por defeito.
+*/
 const resetFilters = () => {
   selectedCity.value = "porto";
   selectedPeriod.value = "2025-09";
@@ -426,6 +457,10 @@ watch([selectedCity, selectedPeriod], () => {
 
 onMounted(loadNeighbourhoods);
 
+/*
+  Computed que identifica hosts com mais de 10 propriedades (hosts comerciais).
+  Agrupa listings por host_id e filtra os que excedem o limite.
+*/
 const multiHostData = computed(() => {
   const hosts = {};
   rawListings.value.forEach((item) => {
@@ -454,6 +489,10 @@ const multiHostData = computed(() => {
     }));
 });
 
+/*
+  Computed que identifica listings com mais de 300 dias ocupados por ano.
+  Indica possível uso não-turístico ou dados incorretos.
+*/
 const highOccupancyData = computed(() => {
   return rawListings.value
     .filter((i) => {
@@ -480,6 +519,10 @@ const highOccupancyData = computed(() => {
     });
 });
 
+/*
+  Computed que identifica listings com avaliação inferior a 3 estrelas.
+  Normaliza ratings que possam estar em escala 0-100 para 0-5.
+*/
 const lowRatingData = computed(() => {
   return rawListings.value
     .filter((i) => {
@@ -507,6 +550,9 @@ const lowRatingData = computed(() => {
     });
 });
 
+/*
+  Computed que identifica listings com menos de 60 dias ocupados (baixa procura).
+*/
 const lowOccupancyData = computed(() => {
   return rawListings.value
     .filter((i) => {
@@ -528,6 +574,10 @@ const lowOccupancyData = computed(() => {
     }));
 });
 
+/*
+  Computed que identifica listings com preços 4x acima da média (outliers de preço).
+  Calcula a média de preços de todos os listings e filtra os que excedem 400%.
+*/
 const priceOutlierData = computed(() => {
   if (!rawListings.value.length) return [];
   let total = 0,
@@ -563,6 +613,9 @@ const priceOutlierData = computed(() => {
     }));
 });
 
+/*
+  Computed que identifica listings com preço zero ou inválido (erro de dados).
+*/
 const zeroPriceData = computed(() => {
   return rawListings.value
     .filter((i) => {
@@ -584,6 +637,7 @@ const zeroPriceData = computed(() => {
     }));
 });
 
+// Seleciona os dados da tabela com base no tipo de anomalia ativo
 const currentTableData = computed(() => {
   switch (activeAnomaly.value) {
     case "multiHost":
@@ -619,11 +673,12 @@ const goToPage = (page) => {
   }
 };
 
-// Reset page when anomaly type changes
+// Reinicia a página ao mudar de tipo de anomalia
 watch(activeAnomaly, () => {
   currentPage.value = 1;
 });
 
+// Título legível para a categoria de anomalia selecionada
 const anomalyTitle = computed(() => {
   switch (activeAnomaly.value) {
     case "multiHost":
@@ -643,6 +698,10 @@ const anomalyTitle = computed(() => {
   }
 });
 
+/*
+  Exporta os detalhes de uma anomalia específica para PDF.
+  Inclui metadados do filtro aplicado e detalhes do item selecionado.
+*/
 const exportAnomalyRow = (item) => {
   const doc = new jsPDF();
 

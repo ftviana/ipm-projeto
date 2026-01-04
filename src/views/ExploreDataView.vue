@@ -1,3 +1,13 @@
+<!-- 
+  Vista Explore Data - Exploração interativa de dados por cidade.
+  
+  Funcionalidades:
+  - Seleção de cidade e período
+  - KPIs principais: listings, preço médio, ocupação, rating
+  - Mapa interativo (heatmap) com modo Preço/Ocupação
+  - Gráficos de tendência (preço e ocupação ao longo do tempo)
+  - Top 6 bairros por ocupação com visualização circular
+-->
 <template>
   <div class="explore-container">
     <div class="header-section">
@@ -179,11 +189,12 @@ import HeatmapMap from "../components/HeatmapMap.vue";
 
 const router = useRouter();
 
+// Estado dos filtros e dados
 const selectedCity = ref("porto");
 const selectedPeriod = ref(store.state.period);
 const heatmapMode = ref("Price");
-const rawListings = shallowRef([]);
-const historyData = ref([]);
+const rawListings = shallowRef([]); // Dados dos listings atuais
+const historyData = ref([]); // Dados históricos para gráficos de tendência
 const isLoading = ref(true);
 const errorMessage = ref(null);
 
@@ -192,12 +203,14 @@ const onPeriodChange = () => {
   loadData();
 };
 
+// Ao mudar de cidade, reinicia para o período mais recente
 const onCityChange = () => {
   selectedPeriod.value = "2025-09";
   store.savePeriod("2025-09");
   loadData();
 };
 
+// Taxas de conversão para moedas suportadas
 const conversionRates = {
   USD: { rate: 1.0, symbol: "$" },
   EUR: { rate: 0.94, symbol: "€" },
@@ -212,6 +225,9 @@ const currencySymbol = computed(() => currentCurrencyInfo.value.symbol);
 const formatCityName = (val) =>
   val ? val.charAt(0).toUpperCase() + val.slice(1) : "";
 
+/*
+  Limpa e converte um valor de preço (pode vir como string com $, etc.) para número.
+*/
 const cleanPrice = (val) => {
   if (typeof val === "number") return val;
   if (!val) return 0;
@@ -220,6 +236,10 @@ const cleanPrice = (val) => {
 
 let abortController = null;
 
+/*
+  Carrega os dados dos listings e histórico para a cidade e período selecionados.
+  Utiliza AbortController para cancelar pedidos anteriores se o utilizador mudar de seleção.
+*/
 const loadData = async () => {
   if (abortController) abortController.abort();
   abortController = new AbortController();
@@ -265,9 +285,13 @@ const loadData = async () => {
   }
 };
 
+// Referências para o toggle switch animado do heatmap
 const toggleContainer = ref(null);
 const toggleGlider = ref(null);
 
+/*
+  Atualiza a posição do glider no toggle switch Price/Occupancy.
+*/
 const updateToggleGlider = async () => {
   await nextTick();
   if (!toggleContainer.value || !toggleGlider.value) return;
@@ -292,6 +316,14 @@ onBeforeUnmount(() => {
   rawListings.value = [];
 });
 
+/*
+  Calcula estatísticas agregadas a partir de um array de listings:
+  - count: número total de listings
+  - avgPrice: preço médio
+  - avgOcc: taxa de ocupação média
+  - avgRating: avaliação média (normalizada para escala 0-5)
+  - validR: número de listings com avaliações válidas
+*/
 const calculateStats = (data) => {
   if (!data)
     return { count: 0, avgPrice: 0, avgOcc: 0, avgRating: 0, validR: 0 };
@@ -329,6 +361,7 @@ const calculateStats = (data) => {
   return { count, avgPrice, avgOcc, avgRating, validR };
 };
 
+// Métricas formatadas para exibição nos KPIs
 const formattedMetrics = computed(() => {
   const stats = calculateStats(rawListings.value);
   const displayPrice = stats.avgPrice * currentCurrencyInfo.value.rate;
@@ -342,6 +375,7 @@ const formattedMetrics = computed(() => {
   };
 });
 
+// Dados de tendência transformados para os gráficos (com conversão de moeda)
 const trendData = computed(() => {
   if (!historyData.value.length) return [];
   return historyData.value.map((h) => ({
@@ -355,6 +389,7 @@ const chartLabels = computed(() => trendData.value.map((d) => d.label));
 const chartPrices = computed(() => trendData.value.map((d) => d.price));
 const chartOccupancy = computed(() => trendData.value.map((d) => d.occupancy));
 
+// Centro do mapa baseado na cidade selecionada
 const mapCenter = computed(() => {
   if (selectedCity.value === "porto") return [41.1579, -8.6291];
   if (selectedCity.value === "lisbon") return [38.7223, -9.1393];
@@ -362,6 +397,10 @@ const mapCenter = computed(() => {
   return [41.1579, -8.6291];
 });
 
+/*
+  Calcula os top 6 bairros ordenados por taxa de ocupação.
+  Para cada bairro, calcula o preço médio e a ocupação média.
+*/
 const topneighbourhoods = computed(() => {
   const data = rawListings.value;
   if (!data.length) return [];

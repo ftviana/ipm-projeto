@@ -1,3 +1,9 @@
+<!-- 
+  Vista FAQ - Perguntas Frequentes.
+  
+  Apresenta uma lista de perguntas e respostas em formato accordion.
+  O utilizador pode expandir/colapsar cada pergunta clicando nela.
+-->
 <template>
   <div class="faq-page">
     <h1>Frequently Asked Questions</h1>
@@ -42,6 +48,7 @@
 <script setup>
 import { ref } from "vue";
 
+// Lista de perguntas e respostas frequentes
 const faqs = ref([
   {
     id: 1,
@@ -65,7 +72,7 @@ const faqs = ref([
     id: 4,
     question: "How can I export a report?",
     answer:
-      "You can generate and export reports directly from the Export Data page. Select your filters (city, neighbourhood, property type, etc.), choose your file format (PDF, CSV, JSON), and click Generate Report. The system will automatically generate a summary with your active filters.",
+      "You can generate and export reports directly from the Export Data page. Select your filters (city, neighbourhood, property type, etc.) and click Generate Report. The system will automatically generate a PDF with a summary with your active filters.",
   },
   {
     id: 5,
@@ -75,8 +82,12 @@ const faqs = ref([
   },
 ]);
 
-const openFaqId = ref(null);
+const openFaqId = ref(null); // ID da pergunta atualmente expandida
 
+/*
+  Alterna a expansão de uma pergunta. 
+  Se a pergunta já está aberta, fecha-a; caso contrário, abre-a.
+*/
 function toggleFaq(id) {
   openFaqId.value = openFaqId.value === id ? null : id;
 }
@@ -92,7 +103,7 @@ function toggleFaq(id) {
 }
 
 .faq-page h1 {
-  margin: 0 0 1.5rem 0;
+  margin: 0 0 2rem 0;
   font-size: 2rem;
   font-weight: 800;
   color: black;

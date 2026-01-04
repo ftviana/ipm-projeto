@@ -1,3 +1,13 @@
+<!-- 
+  Layout principal da aplicação InsideView.
+  
+  Este componente define a estrutura base da aplicação:
+  - Header com navegação principal e logo
+  - Menu de navegação com efeito de glider animado
+  - Dropdown de definições para seleção de moeda
+  - Sistema de notificações toast
+  - Área principal onde as vistas são renderizadas via RouterView
+-->
 <template>
   <div class="app-layout">
     <header>
@@ -214,11 +224,13 @@ import { useRoute } from "vue-router";
 import { store } from "../store.js";
 import AppToast from "../components/AppToast.vue";
 
+// Referências aos elementos DOM para o glider animado
 const navCenter = ref(null);
 const glider = ref(null);
 const route = useRoute();
 const isGliderVisible = ref(false);
 
+// Estado do dropdown de definições
 const isSettingsOpen = ref(false);
 const localCurrency = ref(store.state.currency);
 const showToast = ref(false);
@@ -231,6 +243,9 @@ function toggleSettings() {
   isSettingsOpen.value = !isSettingsOpen.value;
 }
 
+/*
+  Fecha o dropdown de definições quando se clica fora dele.
+*/
 function handleClickOutside(event) {
   if (
     settingsContainer.value &&
@@ -259,6 +274,10 @@ function triggerToast() {
   }, 3000);
 }
 
+/*
+  Atualiza a posição e tamanho do glider animado para destacar o link ativo.
+  O glider desliza suavemente entre os links de navegação.
+*/
 const updateGlider = () => {
   if (!navCenter.value || !glider.value) return;
   const activeLink = navCenter.value.querySelector(
